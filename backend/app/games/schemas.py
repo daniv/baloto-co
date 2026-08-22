@@ -9,9 +9,7 @@ from app.shared.math_utils import numbers_to_hex
 
 type MilotoLotteryNumber = Annotated[int, Field(ge=1, le=settings.miloto.max_value)]
 type BalotoRevanchaLotteryNumber = Annotated[int, Field(ge=1, le=settings.baloto.max_value)]
-type GameSchema = Annotated[
-    MilotoSchema | BalotoSchema | RevanchaSchema, Field(discriminator="game")
-]
+type GameSchema = Annotated[MilotoSchema | BalotoSchema | RevanchaSchema, Field(discriminator="game")]
 
 
 def _validate_unique_sorted(values: list[int]) -> list[int]:
@@ -51,9 +49,15 @@ class BaseModelSchema(BaseModel, ABC):
 
     game_date: date
     numbers: list[int]
-    hits_3: ResultDetails | None = Field(default=None, description="3 hits prize distribution", title="Detalles de 3 aciertos")
-    hits_4: ResultDetails | None = Field(default=None, description="4 hits prize distribution", title="Detalles de 4 aciertos")
-    hits_5: ResultDetails | None = Field(default=None, description="5 hits prize distribution", title="Detalles de 5 aciertos")
+    hits_3: ResultDetails | None = Field(
+        default=None, description="3 hits prize distribution", title="Detalles de 3 aciertos"
+    )
+    hits_4: ResultDetails | None = Field(
+        default=None, description="4 hits prize distribution", title="Detalles de 4 aciertos"
+    )
+    hits_5: ResultDetails | None = Field(
+        default=None, description="5 hits prize distribution", title="Detalles de 5 aciertos"
+    )
 
     @field_validator("game_date", mode="before")
     @classmethod
@@ -88,23 +92,30 @@ class BaseModelSchema(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def result_url(self) -> str:
-        ...
+    def result_url(self) -> str: ...
 
     @abstractmethod
     def calculate_combination_id(self) -> str:
         pass
 
 
-
 class MilotoSchema(BaseModelSchema):
-
     game: Literal["miloto"] = Field(default="miloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.miloto.first_id, title="Sorteo", description="The unique game id")
-    game_date: date = Field(ge=settings.miloto.first_date, title="Fecha", description="The unique game date, must be greater than settings.miloto.first_date")
-    numbers: MilotoNumbers 
-    accumulated: int = Field(ge=settings.miloto.min_jackpot, title="Acumulado", description="The minimum jackpot, must be greater than settings.miloto.min_jackpot")
-    hits_2: ResultDetails | None = Field(default=None, description="2 hits prize distribution", title="Detalles de 2 aciertos")
+    game_date: date = Field(
+        ge=settings.miloto.first_date,
+        title="Fecha",
+        description="The unique game date, must be greater than settings.miloto.first_date",
+    )
+    numbers: MilotoNumbers
+    accumulated: int = Field(
+        ge=settings.miloto.min_jackpot,
+        title="Acumulado",
+        description="The minimum jackpot, must be greater than settings.miloto.min_jackpot",
+    )
+    hits_2: ResultDetails | None = Field(
+        default=None, description="2 hits prize distribution", title="Detalles de 2 aciertos"
+    )
 
     @property
     def result_url(self) -> str:
@@ -113,15 +124,27 @@ class MilotoSchema(BaseModelSchema):
     def calculate_combination_id(self) -> str:
         return self._numbers_hex(settings.miloto.max_value)
 
-class BalotoSchema(BaseModelSchema):
 
-    game: Literal["baloto"] = Field(default="baloto", exclude=True, title="Juego")
+class BalotoSchema(BaseModelSchema):
+    game: Literal["baloto", "revancha"] = Field(default="baloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.baloto.first_id, title="Sorteo", description="The unique game id")
-    game_date: date = Field(ge=settings.baloto.first_date, title="Fecha", description="The unique game date, must be greater than settings.baloto.first_date")
-    numbers: BalotoRevanchaNumbers 
-    accumulated: int = Field(ge=settings.baloto.min_jackpot, title="Acumulado", description="The minimum jackpot, must be greater than settings.baloto.min_jackpot")
-    super_balota: int = Field(ge=1, le=settings.baloto.max_super_balota, description="Super Balota number", title="Super Balota")
-    hits_sb: ResultDetails | None = Field(default=None, description="Super balota hits prize distribution", title="Detalles acierto de super balota")
+    game_date: date = Field(
+        ge=settings.baloto.first_date,
+        title="Fecha",
+        description="The unique game date, must be greater than settings.baloto.first_date",
+    )
+    numbers: BalotoRevanchaNumbers
+    accumulated: int = Field(
+        ge=settings.baloto.min_jackpot,
+        title="Acumulado",
+        description="The minimum jackpot, must be greater than settings.baloto.min_jackpot",
+    )
+    super_balota: int = Field(
+        ge=1, le=settings.baloto.max_super_balota, description="Super Balota number", title="Super Balota"
+    )
+    hits_sb: ResultDetails | None = Field(
+        default=None, description="Super balota hits prize distribution", title="Detalles acierto de super balota"
+    )
     hits_2_sb: ResultDetails | None = Field(
         default=None,
         description="2 hits + super balota prize distribution",
@@ -143,7 +166,6 @@ class BalotoSchema(BaseModelSchema):
         title="Detalles de 5 aciertos mas Super Balota: 5+SB (jackpot)",
     )
 
-
     @property
     def result_url(self) -> str:
         return str(settings.baloto.result_url)
@@ -154,11 +176,8 @@ class BalotoSchema(BaseModelSchema):
 
 
 class RevanchaSchema(BalotoSchema):
-
-    game: Literal["revancha"] = Field(default="revancha", exclude=True, title="Juego")
+    game: Literal["baloto", "revancha"] = Field(default="revancha", exclude=True, title="Juego")
 
     @property
     def result_url(self) -> str:
         return str(settings.revancha.result_url)
-
-

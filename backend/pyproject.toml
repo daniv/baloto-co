@@ -21,3 +21,75 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.4",
 ]
+
+[tool.pytest]
+minversion = "9.0"
+python_files = ["tests_*.py", "*._tests"]
+python_functions = [ "test_*" ]
+testpaths = [ "tests" ]
+asyncio_mode = "auto"
+strict = true
+markers = [
+    "unit: Unit test marker",
+    "db: Database test marker",
+]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--tb=short",
+    "-v",
+    "-s",
+]
+pythonpath = [ "." ]
+
+[tool.pytest_env]
+env_files = ["../.env", "../.env.test"]
+FORCE_COLOR = "1"
+env_files_skip_if_set = true
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # Conflicts with the Ruff formatter.
+    "D203",   # Use D211: no blank line before a class docstring.
+    "D212",   # Use D213: multiline summary starts on the second line.
+    "ISC001", # Conflicts with the Ruff formatter.
+    "CPY001", # Do not require a copyright notice in every Python file.
+    "D104", # Do not require docstrings in empty package initializer files.
+    "D400", # D415 already enforces terminal punctuation more broadly.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = [
+    "ARG001",  # Allow unused function arguments injected as pytest fixtures.
+    "ARG002",  # Allow unused method arguments used by test classes or fixtures.
+    "FBT001",  # Allow Boolean positional arguments in test helpers and parametrized tests.
+    "FBT002",  # Allow Boolean positional default values in test helper functions.
+    "PLR0913", # Allow test functions to receive multiple fixtures and parametrized values.
+    "PLR0917", # Allow multiple positional fixtures and parametrized arguments.
+    "PLR2004", # Allow literal values directly inside test assertions.
+    "S101",    # Allow assert statements, which are standard in pytest tests.
+    "SLF001",  # Allow tests to access private members when validating internal behavior.
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 120
+
+[tool.pyright]
+include = ["app", "tests"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+
+[tool.poe]
+include = "poe_tasks.toml"
+

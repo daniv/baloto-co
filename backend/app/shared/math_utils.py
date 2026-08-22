@@ -33,6 +33,4 @@ def numbers_to_hex(n1: int, n2: int, n3: int, n4: int, n5: int, size: int) -> st
     bool_array[n5 - 1] = True
 
     binary_string = "".join("1" if value else "0" for value in bool_array)
-    hex_value = format(int(binary_string, 2), "X")
-
-    return hex_value
+    return format(int(binary_string, 2), "X")
