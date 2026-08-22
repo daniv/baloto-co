@@ -50,6 +50,7 @@ class BaseModelSchema(BaseModel, ABC):
     model_config = ConfigDict(populate_by_name=True, frozen=True)
 
     game_date: date
+    numbers: list[int]
     hits_3: ResultDetails | None = Field(default=None, description="3 hits prize distribution", title="Detalles de 3 aciertos")
     hits_4: ResultDetails | None = Field(default=None, description="4 hits prize distribution", title="Detalles de 4 aciertos")
     hits_5: ResultDetails | None = Field(default=None, description="5 hits prize distribution", title="Detalles de 5 aciertos")
@@ -77,6 +78,9 @@ class BaseModelSchema(BaseModel, ABC):
             raise ValueError("game_date cannot be in the future")
         return value
 
+    def _numbers_hex(self, max_value: int) -> str:
+        return numbers_to_hex(*self.numbers, max_value)
+
     @computed_field
     @property
     def combination_id(self) -> str:
@@ -94,7 +98,6 @@ class BaseModelSchema(BaseModel, ABC):
 
 
 class MilotoSchema(BaseModelSchema):
-    model_config = ConfigDict(populate_by_name=True, frozen=True)
 
     game: Literal["miloto"] = Field(default="miloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.miloto.first_id, title="Sorteo", description="The unique game id")
@@ -108,16 +111,11 @@ class MilotoSchema(BaseModelSchema):
         return str(settings.miloto.result_url)
 
     def calculate_combination_id(self) -> str:
-        return numbers_to_hex(
-            self.numbers[0], self.numbers[1], self.numbers[2], self.numbers[3], self.numbers[4], settings.miloto.max_value
-        )
-
+        return self._numbers_hex(settings.miloto.max_value)
 
 class BalotoSchema(BaseModelSchema):
-    model_config = ConfigDict(populate_by_name=True, frozen=True)
 
-    _type: str = PrivateAttr(default="B")
-    game: Literal["baloto_revancha"] = Field(default="baloto_revancha", exclude=True, title="Juego")
+    game: Literal["baloto"] = Field(default="baloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.baloto.first_id, title="Sorteo", description="The unique game id")
     game_date: date = Field(ge=settings.baloto.first_date, title="Fecha", description="The unique game date, must be greater than settings.baloto.first_date")
     numbers: BalotoRevanchaNumbers 
@@ -152,16 +150,12 @@ class BalotoSchema(BaseModelSchema):
 
     def calculate_combination_id(self) -> str:
         """Claculates the hexa represenation of the winning combination"""
-        combination_hex = numbers_to_hex(
-            self.numbers[0], self.numbers[1], self.numbers[2], self.numbers[3], self.numbers[4], settings.baloto.max_value
-        )
-        balota_hex = f"{self.super_balota:X}"
-        return f"{combination_hex}:{balota_hex}"
+        return f"{self._numbers_hex(settings.baloto.max_value)}:{self.super_balota:X}"
 
 
 class RevanchaSchema(BalotoSchema):
 
-    _type: str = PrivateAttr(default="R")
+    game: Literal["revancha"] = Field(default="revancha", exclude=True, title="Juego")
 
     @property
     def result_url(self) -> str:

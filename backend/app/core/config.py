@@ -2,12 +2,11 @@ from datetime import date
 import calendar
 from pydantic_settings import BaseSettings, SettingsConfigDict, PyprojectTomlConfigSettingsSource, PydanticBaseSettingsSource
 from pydantic import Field, HttpUrl, SecretStr, PostgresDsn, computed_field, model_validator
-from typing import Type, Self
-from rich.console import Console
+from typing import Self
 
 
 
-class GameSettings(BaseSettings)
+class GameSettings(BaseSettings):
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
 
     numbers_count: int = Field(default=5, description="The total numbers for miloto")
@@ -36,16 +35,12 @@ class BalotoSettings(GameSettings):
     max_value: int = Field(default=43, description="The max baloto/revancha number option to select")
     max_super_balota: int = Field(default=16, description="The max super-balota value for baloto/revancha")
     draw_weekdays: list[int] = Field(default=[calendar.MONDAY, calendar.WEDNESDAY, calendar.SATURDAY], description="The weekdys that baloto/revancha plays")
-    result_url: HttpUrl = Field(default_factory= lambda: HttpUrl("https://www.baloto.com/resultados-baloto/"), description="the miloto base results URL")
+    result_url: HttpUrl = Field(default_factory= lambda: HttpUrl("https://www.baloto.com/resultados-baloto/"), description="the baloto base results URL")
 
 
 class RevanchaSettings(BalotoSettings):
     min_hits_prize: int = Field(default=3_000, description="The lowest revancha prize for SB acert, in COP")
-    result_url: HttpUrl = Field(default_factory=lambda: HttpUrl("https://www.baloto.com/resultados-revancha/"), description="the miloto base results URL")
-
-
-class DatabaseSettings(BaseSettings):
-     model_config = SettingsConfigDict(frozen=True, extra="ignore")
+    result_url: HttpUrl = Field(default_factory=lambda: HttpUrl("https://www.baloto.com/resultados-revancha/"), description="the revancha base results URL")
      
 
 
@@ -76,14 +71,12 @@ class BackendSettings(BaseSettings):
     baloto: BalotoSettings = Field(default_factory=BalotoSettings, frozen=True) 
     revancha: RevanchaSettings = Field(default_factory=RevanchaSettings, frozen=True) 
 
-    console: Console = Console(color_system="truecolor", force_terminal=True)
-    error_console: Console = Console(color_system="256", force_terminal=True, stderr=True)
-    varbosity: int = Field(default=0, title="Dev mode verbosity", frozen=False)
+    verbosity: int = Field(default=0, title="Dev mode verbosity", frozen=False)
 
     @classmethod 
     def settings_customise_sources( 
         cls, 
-        settings_cls: Type[BaseSettings], 
+        settings_cls: type[BaseSettings],
         init_settings: PydanticBaseSettingsSource, 
         env_settings: PydanticBaseSettingsSource, 
         dotenv_settings: PydanticBaseSettingsSource, 
