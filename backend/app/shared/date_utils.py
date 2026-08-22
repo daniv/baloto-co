@@ -1,4 +1,6 @@
 import datetime
+from typing import Any
+import dateparser
 
 from babel.dates import format_date
 
@@ -45,3 +47,25 @@ def full_date(dte: datetime.date) -> str:
     """
     formatted = format_date(date=dte, format="EEEE, dd 'de' MMMM 'de' y", locale="es")
     return formatted.title().replace(" De ", " de ")
+
+
+def parse_spanish_date(value: Any) -> datetime.date:
+    """Parse a Spanish-language date string into a date.
+
+    :param value: Raw date as provided by the caller (e.g. "3 de
+        enero de 2026").
+    :returns: The parsed date.
+    :raises ValueError: If the value cannot be parsed as a date.
+    :raises TypeError: If the value is not a string or datetime.date.
+    """
+    if isinstance(value, datetime.date):
+        return value
+    if not isinstance(value, str):
+        raise TypeError("game_date must be a string or datetime.date")
+
+    parsed = dateparser.parse(value, languages=["es"], settings={"DATE_ORDER": "DMY", "STRICT_PARSING": True})
+
+    if parsed is None:
+        raise ValueError(f"Invalid Spanish date: {value!r}. Expected a value such as '7 de Julio de 2026'.")
+
+    return parsed.date()

@@ -7,21 +7,25 @@ from rich.console import Console
 
 
 
-class MilotoSettings(BaseSettings):
-
+class GameSettings(BaseSettings)
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
+
+    numbers_count: int = Field(default=5, description="The total numbers for miloto")
+
+
+
+class MilotoSettings(GameSettings):
 
     first_id: int = Field(default=1, description="First miloto draw number")
     first_date: date = Field(default=date(2023, 10, 23), description="The fist miloto draw date")
     min_jackpot: int = Field(default=120_000_000, description="The minimum miloto jackpot prize in COP")
     min_hits_prize: int = Field(default=4_000, description="The lowest prize for 2 acerts, in COP")
     max_value: int = Field(default=39, description="The max miloto number option to select")
-    draw_weekdays: list[int] = Field(default=[calendar.MONDAY, calendar.TUESDAY, calendar.THURSDAY, calendar.FRIDAY], description="The weekdys that miloto plays")
-    numbers_count: int = Field(default=5, description="The total numbers for miloto")
+    draw_weekdays: list[int] = Field(default=[calendar.MONDAY, calendar.TUESDAY, calendar.THURSDAY, calendar.FRIDAY], description="The weekdys that miloto plays") 
     result_url: HttpUrl = Field(default_factory=lambda: HttpUrl("https://www.baloto.com/miloto/resultados-miloto/"), description="the miloto base results URL")
 
 
-class BalotoSettings(BaseSettings):
+class BalotoSettings(GameSettings):
 
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
 
@@ -32,7 +36,6 @@ class BalotoSettings(BaseSettings):
     max_value: int = Field(default=43, description="The max baloto/revancha number option to select")
     max_super_balota: int = Field(default=16, description="The max super-balota value for baloto/revancha")
     draw_weekdays: list[int] = Field(default=[calendar.MONDAY, calendar.WEDNESDAY, calendar.SATURDAY], description="The weekdys that baloto/revancha plays")
-    numbers_count: int = Field(default=5, description="The total numbers for baloto/revancha")
     result_url: HttpUrl = Field(default_factory= lambda: HttpUrl("https://www.baloto.com/resultados-baloto/"), description="the miloto base results URL")
 
 
