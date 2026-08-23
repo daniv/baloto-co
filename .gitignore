@@ -42,3 +42,6 @@ Thumbs.db
 
 # Log files
 *.log
+
+# Scratch/temporary files
+tmp/
