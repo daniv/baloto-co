@@ -1,13 +1,10 @@
 """
-Provide the shared Baloto and Revancha result extraction implementation.
+Provide asynchronous extraction and validation for Baloto and Revancha draw results.
 
-The module contains the common Playwright locators, parsing rules, category
-validation, and payout-table handling used by both concrete page objects. It
-also defines the typed hit-category domain and the resolved table-column index
-container required to parse production pages and deterministic test fixtures.
-
-Game-specific URLs and identity validators remain the responsibility of the
-concrete ``BalotoPage`` and ``RevanchaPage`` classes.
+The module defines ``BalotoRevanchaResultPage``, the shared extraction implementation
+for the two games' identical result-page structure, and its concrete ``BalotoResultPage``
+and ``RevanchaResultPage`` subclasses, which only differ in result URL and page-identity
+markers.
 """
 
 import re
@@ -16,23 +13,24 @@ from typing import TYPE_CHECKING, Literal, get_args
 
 from pydantic import TypeAdapter
 
-from app.schemas.base import ResultDetailsSchema
-from app.utils.number_utils import es_localized_to_int, parse_millions_to_pesos
-from app.utils.playwright_utils.base_page import (
+from app.core.config import settings
+from app.games.schemas import ResultDetails
+from app.scraper.parsers.base import (
     BasePage,
     extract_detail_integer,
     get_inner_text,
     get_required_text,
     require_exact_count,
 )
+from app.scraper.validators import BalotoImageValidator, DrawIdValidator, RevanchaImageValidator
+from app.shared.math_utils import es_localized_to_int, parse_millions_to_pesos
 
 if TYPE_CHECKING:
     from playwright.async_api import Locator, Page
+    from pydantic import HttpUrl
 
 
 type BalotoHits = Literal["SB", "2+SB", "3", "3+SB", "4", "4+SB", "5", "5+SB"]
-
-_BALOTO_HITS_ADAPTER: TypeAdapter[BalotoHits] = TypeAdapter(BalotoHits)
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,19 +47,19 @@ class DetailsColumnIndexes:
     prize_for_winner: int
 
 
-class BalotoRevanchaSharedResultPage(BasePage):
+class BalotoRevanchaResultPage(BasePage):
     """
-    Provide common extraction behavior for Baloto-style result pages.
+    Represent and validate an individual Baloto draw result page.
 
-    The class defines the shared result container, draw metadata, number-ball, and
-    payout-table locators used by Baloto and Revancha. It validates the expected
-    category set, rejects duplicated or missing categories, and converts localized
-    prize values into the schemas consumed by application services.
+    The page object reuses the shared Baloto/Revancha extraction implementation,
+    configures the Baloto result URL, and registers validators for the Baloto page
+    identity and expected draw identifier.
     """
 
     _DETAILS_COUNT = 8
     _DETAILS_COLUMN_COUNT = 4
     _RESULT_CONTAINER_SELECTOR = "#balotoBgNew"
+    _BALOTO_HITS_ADAPTER: TypeAdapter[BalotoHits] = TypeAdapter(BalotoHits)
 
     # region Pattern Members
 
@@ -97,11 +95,10 @@ class BalotoRevanchaSharedResultPage(BasePage):
     @classmethod
     def _game_id(cls, page: Page) -> Locator:
         """Return the locator containing the Baloto-style draw identifier."""
+        has_text = re.compile(r"\bSORTEO\b", re.IGNORECASE)
         return (
-            page.locator(cls._RESULT_CONTAINER_SELECTOR)
-            .locator("strong")
-            .filter(has_text=re.compile(r"\bSORTEO\b", re.IGNORECASE))
-        ).describe("game id")
+            page.locator(cls._RESULT_CONTAINER_SELECTOR).locator("strong").filter(has_text=has_text).describe("game id")
+        )
 
     def _result_container(self) -> Locator:
         return self._page.locator(self._RESULT_CONTAINER_SELECTOR).describe("container balotoBgNew")
@@ -110,23 +107,14 @@ class BalotoRevanchaSharedResultPage(BasePage):
         """Return the locator containing the Baloto-style draw date."""
         return (
             self._result_container()
-            .locator(
-                "div.gotham-medium.dark-blue",
-            )
-            .filter(
-                has_text=self._GAME_DATE_PATTERN,
-            )
-        ).describe("game date")
+            .locator("div.gotham-medium.dark-blue")
+            .filter(has_text=self._GAME_DATE_PATTERN)
+            .describe("game date")
+        )
 
     def _accumulated_prize(self) -> Locator:
         """Return the locator containing the accumulated draw prize."""
-        return (
-            self._result_container()
-            .get_by_text(
-                self._ACCUMULATED_PRIZE_PATTERN,
-            )
-            .describe("Accumulated prize")
-        )
+        return self._result_container().get_by_text(self._ACCUMULATED_PRIZE_PATTERN).describe("Accumulated prize")
 
     def _winner_numbers(self) -> Locator:
         """
@@ -134,23 +122,11 @@ class BalotoRevanchaSharedResultPage(BasePage):
 
         The locator is scoped to yellow result balls so the red superball is excluded.
         """
-        return (
-            self._result_container()
-            .locator(
-                ".container-balls-results .yellow-ball",
-            )
-            .describe("Winner numbers")
-        )
+        return self._result_container().locator(".container-balls-results .yellow-ball").describe("Winner numbers")
 
     def _balota(self) -> Locator:
         """Return the locator containing the red superball."""
-        return (
-            self._result_container()
-            .locator(
-                ".container-balls-results .red-ball",
-            )
-            .describe("balota")
-        )
+        return self._result_container().locator(".container-balls-results .red-ball").describe("balota")
 
     def _details_container(self) -> Locator:
         """Return the locator containing the payout table."""
@@ -164,6 +140,21 @@ class BalotoRevanchaSharedResultPage(BasePage):
         """Return the payout-table category-row locator."""
         return self._details_container().locator("tbody tr")
 
+    # endregion
+
+    # region Service Protected Methods
+
+    def _validate_hits(self, hits: str) -> BalotoHits:
+        """
+        Validate and narrow a Baloto-style hit category.
+
+        :param hits: Category text to normalize and validate.
+        :return: Supported typed Baloto hit category.
+        :raises ValueError: If the normalized category is unsupported.
+        """
+        normalized_hits = re.sub(r"\s+", "", hits).upper()
+        return self._BALOTO_HITS_ADAPTER.validate_python(normalized_hits)
+
     async def _get_validated_detail_rows(self) -> list[Locator]:
         """
         Return the complete validated payout-row collection.
@@ -176,13 +167,7 @@ class BalotoRevanchaSharedResultPage(BasePage):
 
         return await rows_locator.all()
 
-    # endregion
-
-    async def _get_detail_category(
-        self,
-        row: Locator,
-        indexes: DetailsColumnIndexes,
-    ) -> BalotoHits:
+    async def _get_detail_category(self, row: Locator, indexes: DetailsColumnIndexes) -> BalotoHits:
         """
         Extract and validate the hit category from a payout-table row.
 
@@ -199,7 +184,7 @@ class BalotoRevanchaSharedResultPage(BasePage):
         )
         normalized_category = _normalize_baloto_hits_key(category_text)
 
-        return _validate_hits(normalized_category)
+        return self._validate_hits(normalized_category)
 
     async def _get_details_column_indexes(self) -> DetailsColumnIndexes:
         """
@@ -233,16 +218,10 @@ class BalotoRevanchaSharedResultPage(BasePage):
         return DetailsColumnIndexes(
             hits=normalized_headers.index("ACIERTOS"),
             winners=normalized_headers.index("GANADORES"),
-            prize_for_winner=normalized_headers.index(
-                "PREMIO POR GANADOR",
-            ),
+            prize_for_winner=normalized_headers.index("PREMIO POR GANADOR"),
         )
 
-    async def _parse_detail_row(
-        self,
-        row: Locator,
-        indexes: DetailsColumnIndexes,
-    ) -> ResultDetailsSchema | None:
+    async def _parse_detail_row(self, row: Locator, indexes: DetailsColumnIndexes) -> ResultDetails | None:
         """
         Parse one validated Baloto-style payout-table row.
 
@@ -262,12 +241,14 @@ class BalotoRevanchaSharedResultPage(BasePage):
         prize_text = await get_inner_text(cells.nth(indexes.prize_for_winner))
         prize_for_winner = extract_detail_integer(prize_text, "PREMIO POR GANADOR", self.game_name)
 
-        return ResultDetailsSchema(
+        return ResultDetails(
             prize_for_winner=prize_for_winner,
             winners=winners,
         )
 
-    async def get_details(self) -> dict[str, ResultDetailsSchema]:
+    # endregion
+
+    async def get_details(self) -> dict[str, ResultDetails]:
         """
         Extract payout information for every Baloto-style hit category.
 
@@ -280,7 +261,7 @@ class BalotoRevanchaSharedResultPage(BasePage):
         """
         rows = await self._get_validated_detail_rows()
         indexes = await self._get_details_column_indexes()
-        details: dict[str, ResultDetailsSchema] = {}
+        details: dict[str, ResultDetails] = {}
         discovered_categories: set[BalotoHits] = set()
 
         for row in rows:
@@ -340,19 +321,14 @@ class BalotoRevanchaSharedResultPage(BasePage):
         :raises AssertionError: If the prize locator does not resolve to one node.
         :raises ValueError: If the displayed prize does not match the expected format.
         """
-        text = await get_required_text(
-            self._accumulated_prize(),
-            "accumulated prize",
-        )
+        text = await get_required_text(self._accumulated_prize(), "accumulated prize")
         match = self._ACCUMULATED_PRIZE_PATTERN.fullmatch(text)
 
         if match is None:
             error_message = f"Could not extract the {self.game_name} accumulated prize from: {text!r}"
             raise ValueError(error_message)
 
-        return parse_millions_to_pesos(
-            match.group(1),
-        )
+        return parse_millions_to_pesos(match.group(1))
 
     async def get_balota(self) -> int:
         """
@@ -369,7 +345,7 @@ class BalotoRevanchaSharedResultPage(BasePage):
             error_message = f"Invalid {self.game_name} superball value: {balota_text!r}"
             raise ValueError(error_message) from error
 
-    async def get_detail(self, hits: str) -> ResultDetailsSchema | None:
+    async def get_detail(self, hits: str) -> ResultDetails | None:
         """
         Extract payout information for one Baloto-style hit category.
 
@@ -378,7 +354,7 @@ class BalotoRevanchaSharedResultPage(BasePage):
         :raises AssertionError: If the payout table does not have the expected structure.
         :raises ValueError: If the category is unsupported, missing, duplicated, or malformed.
         """
-        validated_hits = _validate_hits(hits)
+        validated_hits = self._validate_hits(hits)
         rows = await self._get_validated_detail_rows()
         indexes = await self._get_details_column_indexes()
         matching_rows: list[Locator] = []
@@ -402,6 +378,76 @@ class BalotoRevanchaSharedResultPage(BasePage):
         return await self._parse_detail_row(matching_rows[0], indexes)
 
 
+class BalotoResultPage(BalotoRevanchaResultPage):
+    """
+    Represent and validate an individual Baloto draw result page.
+
+    The page object reuses the shared Baloto/Revancha extraction implementation,
+    configures the Baloto result URL, and registers validators for the Baloto page
+    identity and expected draw identifier.
+    """
+
+    def __init__(self, page: Page, draw_id: int) -> None:
+        """
+        Initialize a Baloto page object for a specific draw.
+
+        The constructor initializes the shared result-page state and registers the
+        Baloto identity marker and draw-identifier validators.
+
+        :param page: Playwright page used to navigate and extract the Baloto result.
+        :param draw_id: Positive Baloto draw identifier expected in the loaded page.
+        :raises ValueError: If ``draw_id`` is not greater than zero.
+        :raises DuplicateValidatorError: If a validator name is already registered.
+        """
+        super().__init__(page, draw_id)
+        self.validators.register(BalotoImageValidator(), DrawIdValidator(draw_id, self._game_id))
+
+    @property
+    def _result_url(self) -> HttpUrl:
+        """Return the configured Baloto results URL."""
+        return settings.baloto.result_url
+
+    @property
+    def game_name(self) -> str:
+        """Return the canonical Baloto game name."""
+        return "Baloto"
+
+
+class RevanchaResultPage(BalotoRevanchaResultPage):
+    """
+    Represent and validate an individual Revancha draw result page.
+
+    The page object reuses the shared Baloto/Revancha extraction implementation,
+    configures the Revancha result URL, and registers validators for the Revancha
+    page identity and expected draw identifier.
+    """
+
+    def __init__(self, page: Page, draw_id: int) -> None:
+        """
+        Initialize a Revancha page object for a specific draw.
+
+        The constructor initializes the shared result-page state and registers the
+        Revancha identity marker and draw-identifier validators.
+
+        :param page: Playwright page used to navigate and extract the Revancha result.
+        :param draw_id: Positive Revancha draw identifier expected in the loaded page.
+        :raises ValueError: If ``draw_id`` is not greater than zero.
+        :raises DuplicateValidatorError: If a validator name is already registered.
+        """
+        super().__init__(page, draw_id)
+        self.validators.register(RevanchaImageValidator(), DrawIdValidator(draw_id, self._game_id))
+
+    @property
+    def _result_url(self) -> HttpUrl:
+        """Return the configured Revancha results URL."""
+        return settings.revancha.result_url
+
+    @property
+    def game_name(self) -> str:
+        """Return the canonical Revancha game name."""
+        return "Revancha"
+
+
 def _normalize_baloto_hits_key(hits_text: str) -> str:
     """
     Normalize a displayed Baloto-style category to its canonical key.
@@ -414,6 +460,7 @@ def _normalize_baloto_hits_key(hits_text: str) -> str:
 
     category_mapping = {
         "0+SB": "SB",
+        "1+SB": "SB",
         "SB": "SB",
         "2+SB": "2+SB",
         "3": "3",
@@ -431,25 +478,3 @@ def _normalize_baloto_hits_key(hits_text: str) -> str:
         raise ValueError(error_message)
 
     return category
-
-
-def _normalize_hits(hits: str) -> str:
-    """
-    Normalize caller-provided hit-category text.
-
-    :param hits: Hit category supplied by the caller.
-    :return: Uppercase category text with all whitespace removed.
-    """
-    return re.sub(r"\s+", "", hits).upper()
-
-
-def _validate_hits(hits: str) -> BalotoHits:
-    """
-    Validate and narrow a Baloto-style hit category.
-
-    :param hits: Category text to normalize and validate.
-    :return: Supported typed Baloto hit category.
-    :raises ValueError: If the normalized category is unsupported.
-    """
-    normalized_hits = _normalize_hits(hits)
-    return _BALOTO_HITS_ADAPTER.validate_python(normalized_hits)

@@ -24,7 +24,7 @@ class GameSettings(BaseSettings):
 
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
 
-    numbers_count: int = Field(default=5, description="The total numbers for miloto")
+    winning_numbers_count: int = Field(default=5, description="The total numbers for miloto")
 
 
 class MilotoSettings(GameSettings):

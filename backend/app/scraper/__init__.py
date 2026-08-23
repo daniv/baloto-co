@@ -12,20 +12,18 @@ callers to depend on the internal module layout.
 
 from typing import TYPE_CHECKING, Protocol
 
-from app.utils.playwright_utils.baloto_page import BalotoPage, RevanchaPage
-from app.utils.playwright_utils.html_loader import DrawPageNotFoundError
-from app.utils.playwright_utils.miloto_page import MilotoPage
-from app.utils.playwright_utils.validators import (
-    DuplicateValidatorError,
+from app.scraper.exceptions import DrawPageNotFoundError, DuplicateValidatorError, ValidatorNotRegisteredError
+from app.scraper.parsers.baloto import BalotoResultPage, RevanchaResultPage
+from app.scraper.parsers.miloto import MilotoResultPage
+from app.scraper.validators import (
     Validator,
-    ValidatorNotRegisteredError,
     ValidatorRegistry,
 )
 
 if TYPE_CHECKING:
     from playwright.async_api import Response
 
-    from app.schemas.base import ResultDetailsSchema
+    from app.games.schemas import ResultDetails
 
 
 class ResultPage(Protocol):
@@ -77,7 +75,7 @@ class ResultPage(Protocol):
         """
         ...
 
-    async def get_details(self) -> dict[str, ResultDetailsSchema]:
+    async def get_details(self) -> dict[str, ResultDetails]:
         """
         Extract payout details for all supported hit categories with winners.
 
@@ -86,10 +84,7 @@ class ResultPage(Protocol):
         """
         ...
 
-    async def get_detail(
-        self,
-        hits: str,
-    ) -> ResultDetailsSchema | None:
+    async def get_detail(self, hits: str) -> ResultDetails | None:
         """
         Extract payout details for one requested hit category.
 
@@ -111,12 +106,12 @@ class ResultPage(Protocol):
 
 
 __all__ = [
-    "BalotoPage",
+    "BalotoResultPage",
     "DrawPageNotFoundError",
     "DuplicateValidatorError",
-    "MilotoPage",
+    "MilotoResultPage",
     "ResultPage",
-    "RevanchaPage",
+    "RevanchaResultPage",
     "Validator",
     "ValidatorNotRegisteredError",
     "ValidatorRegistry",

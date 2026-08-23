@@ -13,11 +13,12 @@ from typing import TYPE_CHECKING
 
 from playwright.async_api import Locator, Response, expect
 
-from app.utils.number_utils import es_localized_to_int
-from app.utils.playwright_utils.validators import (
+from app.core.config import settings
+from app.scraper.validators import (
     UrlValidator,
     ValidatorRegistry,
 )
+from app.shared.math_utils import es_localized_to_int
 
 if TYPE_CHECKING:
     from playwright.async_api import Page
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
 
 
 _INTEGER_PATTERN = re.compile(r"(\d+(?:\.\d{3})*)")
-_WINNING_NUMBERS_COUNT = 5
 
 
 class BasePage(ABC):
@@ -38,11 +38,7 @@ class BasePage(ABC):
     successful Playwright navigation.
     """
 
-    def __init__(
-        self,
-        page: Page,
-        draw_id: int,
-    ) -> None:
+    def __init__(self, page: Page, draw_id: int) -> None:
         """
         Initialize the shared state for a lottery result page.
 
@@ -75,6 +71,15 @@ class BasePage(ABC):
     def game_name(self) -> str:
         """Return the canonical name of the lottery game."""
 
+    async def _validate_page_identity(self) -> None:
+        """Run every registered validator against the loaded page."""
+        await self._validators.validate(self._page)
+
+    @property
+    def validators(self) -> ValidatorRegistry:
+        """Return the validator registry owned by this page object."""
+        return self._validators
+
     @property
     @abstractmethod
     def _result_url(self) -> HttpUrl:
@@ -84,15 +89,6 @@ class BasePage(ABC):
     def target_url(self) -> str:
         """Return the complete result URL for the configured draw."""
         return self._target_url
-
-    async def _validate_page_identity(self) -> None:
-        """Run every registered validator against the loaded page."""
-        await self._validators.validate(self._page)
-
-    @property
-    def validators(self) -> ValidatorRegistry:
-        """Return the validator registry owned by this page object."""
-        return self._validators
 
     async def open(self) -> Response:
         """
@@ -129,7 +125,7 @@ class BasePage(ABC):
         :raises ValueError: If any displayed number cannot be converted to an integer.
         """
         winner_numbers = self._winner_numbers()
-        await require_exact_count(winner_numbers, _WINNING_NUMBERS_COUNT, "winning numbers")
+        await require_exact_count(winner_numbers, settings.baloto.winning_numbers_count, "winning numbers")
 
         number_texts = await winner_numbers.all_inner_texts()
 
@@ -140,11 +136,7 @@ class BasePage(ABC):
             raise ValueError(error_message) from error
 
 
-async def get_inner_text(
-    locator: Locator,
-    *,
-    timeout_ms: float = 30_000.0,
-) -> str:
+async def get_inner_text(locator: Locator, *, timeout_ms: float = 30_000.0) -> str:
     """
     Read and normalize the inner text of a locator.
 
@@ -193,10 +185,7 @@ async def require_exact_count(
     ).to_have_count(expected_count, timeout=timeout_ms)
 
 
-async def get_required_text(
-    locator: Locator,
-    field_name: str,
-) -> str:
+async def get_required_text(locator: Locator, field_name: str) -> str:
     """
     Read text from a locator that must resolve to exactly one node.
 

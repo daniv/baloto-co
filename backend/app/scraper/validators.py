@@ -11,13 +11,16 @@ when a loaded document does not represent the requested game or draw.
 import re
 from collections import Counter
 from collections.abc import Callable
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
+from babel.dates import format_date
 from playwright.async_api import Locator, Page, expect
 
-from app.utils.number_utils import int_to_localized_es
-from datetime import date
-from babel.dates import format_date
+from app.scraper.exceptions import DuplicateValidatorError, ValidatorNotRegisteredError
+from app.shared.math_utils import int_to_localized_es
+
+if TYPE_CHECKING:
+    from datetime import date
 
 type LocatorFactory = Callable[[Page], Locator]
 
@@ -44,45 +47,6 @@ class Validator(Protocol):
         :raises AssertionError: If the page does not satisfy the validator contract.
         """
         ...
-
-
-class DuplicateValidatorError(ValueError):
-    """
-    Report one or more duplicate validator names.
-
-    The exception is raised before registry mutation so failed registration
-    operations remain atomic.
-    """
-
-    def __init__(self, validator_names: tuple[str, ...]) -> None:
-        """
-        Initialize an error for duplicated validator names.
-
-        :param validator_names: Sorted or discovered validator names that conflict.
-        """
-        self.validator_names = validator_names
-        formatted_names = ", ".join(repr(name) for name in validator_names)
-        error_message = f"Validator names must be unique. Duplicates found: {formatted_names}."
-        super().__init__(error_message)
-
-
-class ValidatorNotRegisteredError(LookupError):
-    """
-    Report an attempt to remove an unknown validator.
-
-    The missing validator name is retained on the exception for programmatic
-    inspection by callers and tests.
-    """
-
-    def __init__(self, validator_name: str) -> None:
-        """
-        Initialize an error for an unregistered validator.
-
-        :param validator_name: Name requested from the registry.
-        """
-        self.validator_name = validator_name
-        error_message = f"Validator {validator_name!r} is not registered."
-        super().__init__(error_message)
 
 
 class ValidatorRegistry:
@@ -266,9 +230,9 @@ class DrawIdValidator:
 
 class MetaContentValidator:
     """
-    Validate the MiLoto identity declared by page metadata.
+    Validate the Miloto identity declared by page metadata.
 
-    This validator targets the description meta element used by MiLoto result
+    This validator targets the description meta element used by Miloto result
     pages and verifies its exact game-identifying content.
     """
 
@@ -279,26 +243,26 @@ class MetaContentValidator:
 
     async def validate(self, page: Page) -> None:
         """
-        Verify that the page metadata identifies MiLoto.
+        Verify that the page metadata identifies Miloto.
 
         :param page: Loaded Playwright page to validate.
-        :raises AssertionError: If the description metadata does not contain ``MiLoto``.
+        :raises AssertionError: If the description metadata does not contain ``Miloto``.
         """
         description = page.locator(
             'meta[name="description"]',
-        ).describe("MiLoto meta description tag")
+        ).describe("Miloto meta description tag")
 
         await expect(
             description,
-            "Loaded page metadata should identify the MiLoto game",
-        ).to_have_attribute("content", "MiLoto")
+            "Loaded page metadata should identify the Miloto game",
+        ).to_have_attribute("content", "Miloto")
 
 
 class PageTitleValidator:
     """
-    Validate the MiLoto identity declared by the document title.
+    Validate the Miloto identity declared by the document title.
 
-    The validator is intentionally specific to MiLoto pages, whose title provides
+    The validator is intentionally specific to Miloto pages, whose title provides
     a reliable identity marker for result extraction.
     """
 
@@ -309,15 +273,15 @@ class PageTitleValidator:
 
     async def validate(self, page: Page) -> None:
         """
-        Verify that the loaded page title identifies MiLoto.
+        Verify that the loaded page title identifies Miloto.
 
         :param page: Loaded Playwright page to validate.
-        :raises AssertionError: If the page title is not exactly ``MiLoto``.
+        :raises AssertionError: If the page title is not exactly ``Miloto``.
         """
         await expect(
             page,
-            "Loaded page title should identify the MiLoto game",
-        ).to_have_title("MiLoto")
+            "Loaded page title should identify the Miloto game",
+        ).to_have_title("Miloto")
 
 
 class RevanchaImageValidator:
@@ -379,6 +343,7 @@ class BalotoImageValidator:
             "The loaded page should contain at least one Baloto identity marker",
         ).to_be_attached(timeout=5_000.0)
 
+
 class DateValidator:
     """Validate the draw date displayed by a lottery result page."""
 
@@ -423,36 +388,4 @@ class DateValidator:
         await expect(
             self._locator_factory(page),
             f"Loaded page should display draw date {localized_date!r}",
-        ).to_have_text(expected_text)}
-
-
-
-
-def _validate_hits(hits: str) -> MilotoHits:
-    normalized_hits = re.sub(r"\s+", "", hits).upper()
-    return _MILOTO_HITS_ADAPTER.validate_python(normalized_hits)
-
-
-
-
-
-def _normalize_hits(hits: str) -> str:
-    """
-    Normalize caller-provided hit-category text.
-
-    :param hits: Hit category supplied by the caller.
-    :return: Uppercase category text with all whitespace removed.
-    """
-    return re.sub(r"\s+", "", hits).upper()
-
-
-def _validate_hits(hits: str) -> BalotoHits:
-    """
-    Validate and narrow a Baloto-style hit category.
-
-    :param hits: Category text to normalize and validate.
-    :return: Supported typed Baloto hit category.
-    :raises ValueError: If the normalized category is unsupported.
-    """
-    normalized_hits = _normalize_hits(hits)
-    return _BALOTO_HITS_ADAPTER.validate_python(normalized_hits)
+        ).to_have_text(expected_text)

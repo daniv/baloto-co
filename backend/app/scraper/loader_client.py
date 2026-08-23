@@ -10,7 +10,8 @@ import re
 
 import httpx
 
-from app.utils.number_utils import int_to_localized_es
+from app.scraper.exceptions import DrawPageNotFoundError
+from app.shared.math_utils import int_to_localized_es
 
 HEADERS = {
     "User-Agent": (
@@ -27,16 +28,7 @@ HEADERS = {
 }
 
 
-class DrawPageNotFoundError(ValueError):
-    """Indicate that the website did not return the requested draw page."""
-
-
-async def get_html(
-    url: str,
-    expected_game_id: int,
-    *,
-    timeout_seconds: float = 30.0,
-) -> str:
+async def get_html(url: str, expected_game_id: int, *, timeout_seconds: float = 300.0) -> str:
     """
     Download and validate the HTML document for a specific lottery draw.
 
