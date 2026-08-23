@@ -423,4 +423,36 @@ class DateValidator:
         await expect(
             self._locator_factory(page),
             f"Loaded page should display draw date {localized_date!r}",
-        ).to_have_text(expected_text)
+        ).to_have_text(expected_text)}
+
+
+
+
+def _validate_hits(hits: str) -> MilotoHits:
+    normalized_hits = re.sub(r"\s+", "", hits).upper()
+    return _MILOTO_HITS_ADAPTER.validate_python(normalized_hits)
+
+
+
+
+
+def _normalize_hits(hits: str) -> str:
+    """
+    Normalize caller-provided hit-category text.
+
+    :param hits: Hit category supplied by the caller.
+    :return: Uppercase category text with all whitespace removed.
+    """
+    return re.sub(r"\s+", "", hits).upper()
+
+
+def _validate_hits(hits: str) -> BalotoHits:
+    """
+    Validate and narrow a Baloto-style hit category.
+
+    :param hits: Category text to normalize and validate.
+    :return: Supported typed Baloto hit category.
+    :raises ValueError: If the normalized category is unsupported.
+    """
+    normalized_hits = _normalize_hits(hits)
+    return _BALOTO_HITS_ADAPTER.validate_python(normalized_hits)
