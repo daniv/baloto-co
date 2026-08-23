@@ -1,5 +1,8 @@
-def main():
-    print("Hello from backend!")
+"""Backend application entrypoint."""
+
+
+def main() -> None:
+    """Run the backend application."""
 
 
 if __name__ == "__main__":

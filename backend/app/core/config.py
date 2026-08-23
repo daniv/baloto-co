@@ -1,22 +1,41 @@
-from datetime import date
+"""Application settings, including per-game lottery configuration."""
+
 import calendar
+from datetime import date
+from typing import Self
+
+from pydantic import Field, HttpUrl, PostgresDsn, SecretStr, computed_field, model_validator
 from pydantic_settings import (
     BaseSettings,
-    SettingsConfigDict,
-    PyprojectTomlConfigSettingsSource,
     PydanticBaseSettingsSource,
+    PyprojectTomlConfigSettingsSource,
+    SettingsConfigDict,
 )
-from pydantic import Field, HttpUrl, SecretStr, PostgresDsn, computed_field, model_validator
-from typing import Self
 
 
 class GameSettings(BaseSettings):
+    """
+    Base settings shared by every lottery game.
+
+    Subclassed by each game's settings (:class:`MilotoSettings`,
+    :class:`BalotoSettings`) to add the game-specific numeric bounds,
+    historical draw data, and result URL.
+    """
+
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
 
     numbers_count: int = Field(default=5, description="The total numbers for miloto")
 
 
 class MilotoSettings(GameSettings):
+    """
+    Fixed configuration for the Miloto lottery game.
+
+    Holds the historical first draw id/date, the numeric bounds for the
+    5 drawn numbers, the jackpot and hit-prize floors, the weekdays
+    Miloto is drawn, and the base results URL.
+    """
+
     first_id: int = Field(default=1, description="First miloto draw number")
     first_date: date = Field(default=date(2023, 10, 23), description="The fist miloto draw date")
     min_jackpot: int = Field(default=120_000_000, description="The minimum miloto jackpot prize in COP")
@@ -33,6 +52,14 @@ class MilotoSettings(GameSettings):
 
 
 class BalotoSettings(GameSettings):
+    """
+    Fixed configuration for the Baloto lottery game.
+
+    Holds the historical first draw id/date, the numeric bounds for the
+    5 drawn numbers and the super balota, the jackpot and hit-prize
+    floors, the weekdays Baloto is drawn, and the base results URL.
+    """
+
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
 
     first_id: int = Field(default=2082, description="First baloto/revancha draw number")
@@ -52,6 +79,14 @@ class BalotoSettings(GameSettings):
 
 
 class RevanchaSettings(BalotoSettings):
+    """
+    Fixed configuration for the Revancha lottery game.
+
+    Revancha is drawn from the same balls as Baloto, so it inherits all
+    of :class:`BalotoSettings` and only overrides the hit-prize floor
+    and the base results URL.
+    """
+
     min_hits_prize: int = Field(default=3_000, description="The lowest revancha prize for SB acert, in COP")
     result_url: HttpUrl = Field(
         default_factory=lambda: HttpUrl("https://www.baloto.com/resultados-revancha/"),
@@ -60,6 +95,15 @@ class RevanchaSettings(BalotoSettings):
 
 
 class BackendSettings(BaseSettings):
+    """
+    Top-level application settings, loaded from the environment and ``pyproject.toml``.
+
+    Aggregates the database connection settings and the per-game
+    settings (:attr:`miloto`, :attr:`baloto`, :attr:`revancha`) into a
+    single settings object exposed as the module-level ``settings``
+    singleton.
+    """
+
     model_config = SettingsConfigDict(
         validate_default=True,
         case_sensitive=False,
@@ -96,6 +140,16 @@ class BackendSettings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """
+        Order the settings sources consulted when building this model.
+
+        :param settings_cls: The settings class being instantiated.
+        :param init_settings: Values passed directly to the constructor.
+        :param env_settings: Values read from environment variables.
+        :param dotenv_settings: Values read from the ``.env`` file.
+        :param file_secret_settings: Values read from secret files.
+        :returns: The sources in priority order, highest priority first.
+        """
         return (
             init_settings,
             env_settings,

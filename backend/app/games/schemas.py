@@ -1,11 +1,14 @@
-from pydantic import AfterValidator, BaseModel, ConfigDict, PrivateAttr, Field, field_validator, computed_field
-from typing import Any, Annotated, Literal
-from datetime import date
+"""Pydantic schemas for lottery game draw results."""
+
+import datetime
 from abc import ABC, abstractmethod
+from typing import Annotated, Literal
+
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, computed_field, field_validator
+
 from app.core.config import settings
 from app.shared.date_utils import parse_spanish_date
 from app.shared.math_utils import numbers_to_hex
-
 
 type MilotoLotteryNumber = Annotated[int, Field(ge=1, le=settings.miloto.max_value)]
 type BalotoRevanchaLotteryNumber = Annotated[int, Field(ge=1, le=settings.baloto.max_value)]
@@ -13,14 +16,16 @@ type GameSchema = Annotated[MilotoSchema | BalotoSchema | RevanchaSchema, Field(
 
 
 def _validate_unique_sorted(values: list[int]) -> list[int]:
-    """Ensure lottery numbers are unique and return them sorted ascending.
+    """
+    Ensure lottery numbers are unique and return them sorted ascending.
 
     :param values: Raw list of numbers as provided by the caller.
     :returns: The same numbers sorted in ascending order.
     :raises ValueError: If any number appears more than once in ``values``.
     """
     if len(values) != len(set(values)):
-        raise ValueError("numbers must be unique")
+        message = "numbers must be unique"
+        raise ValueError(message)
     return sorted(values)
 
 
@@ -38,6 +43,13 @@ type BalotoRevanchaNumbers = Annotated[
 
 
 class ResultDetails(BaseModel):
+    """
+    Prize distribution for a single hit tier of a lottery draw.
+
+    Reused across every hit-count field on the game schemas (e.g. 3, 4,
+    or 5 numbers matched, with or without the super balota).
+    """
+
     model_config = ConfigDict(populate_by_name=True, frozen=True)
 
     prize_for_winner: int = Field(default=0, ge=0, description="Prize per winner", title="Premio por Ganador")
@@ -45,9 +57,17 @@ class ResultDetails(BaseModel):
 
 
 class BaseModelSchema(BaseModel, ABC):
+    """
+    Shared fields and behaviour for a single lottery draw result.
+
+    Concrete game schemas (:class:`MilotoSchema`, :class:`BalotoSchema`,
+    :class:`RevanchaSchema`) extend this class to add their own drawn
+    numbers, prize tiers, and result URL.
+    """
+
     model_config = ConfigDict(populate_by_name=True, frozen=True)
 
-    game_date: date
+    game_date: datetime.date
     numbers: list[int]
     hits_3: ResultDetails | None = Field(
         default=None, description="3 hits prize distribution", title="Detalles de 3 aciertos"
@@ -61,8 +81,9 @@ class BaseModelSchema(BaseModel, ABC):
 
     @field_validator("game_date", mode="before")
     @classmethod
-    def _convert_es_date(cls, value: Any) -> date:
-        """Convert an incoming Spanish date string before validation.
+    def _convert_es_date(cls, value: object) -> datetime.date:
+        """
+        Convert an incoming Spanish date string before validation.
 
         :param value: Raw value as sent by the caller.
         :returns: The parsed date.
@@ -71,38 +92,55 @@ class BaseModelSchema(BaseModel, ABC):
 
     @field_validator("game_date", mode="after")
     @classmethod
-    def _reject_future_date(cls, value: date) -> date:
-        """Ensure the game date is not in the future.
+    def _reject_future_date(cls, value: datetime.date) -> datetime.date:
+        """
+        Ensure the game date is not in the future.
 
         :param value: Already-parsed date.
         :returns: The same date.
         :raises ValueError: If ``value`` is later than today.
         """
-        if value > date.today():
-            raise ValueError("game_date cannot be in the future")
+        if value > datetime.datetime.now(tz=datetime.UTC).date():
+            message = "game_date cannot be in the future"
+            raise ValueError(message)
         return value
 
     def _numbers_hex(self, max_value: int) -> str:
-        return numbers_to_hex(*self.numbers, max_value)
+        """
+        Encode the drawn numbers as a hexadecimal bitmap.
+
+        :param max_value: The highest possible drawn number for this game.
+        :returns: The hexadecimal bitmap of the drawn numbers.
+        """
+        return numbers_to_hex(self.numbers, max_value)
 
     @computed_field
     @property
     def combination_id(self) -> str:
+        """Hexadecimal identifier of the winning number combination."""
         return self.calculate_combination_id()
 
     @property
     @abstractmethod
-    def result_url(self) -> str: ...
+    def result_url(self) -> str:
+        """URL of the official results page for this game."""
+        ...
 
     @abstractmethod
     def calculate_combination_id(self) -> str:
-        pass
+        """
+        Compute the hexadecimal identifier for the winning number combination.
+
+        :returns: The combination id, unique to this draw's winning numbers.
+        """
 
 
 class MilotoSchema(BaseModelSchema):
+    """A single Miloto draw result: winning numbers, jackpot, and prize tiers."""
+
     game: Literal["miloto"] = Field(default="miloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.miloto.first_id, title="Sorteo", description="The unique game id")
-    game_date: date = Field(
+    game_date: datetime.date = Field(
         ge=settings.miloto.first_date,
         title="Fecha",
         description="The unique game date, must be greater than settings.miloto.first_date",
@@ -119,16 +157,24 @@ class MilotoSchema(BaseModelSchema):
 
     @property
     def result_url(self) -> str:
+        """URL of the official Miloto results page."""
         return str(settings.miloto.result_url)
 
     def calculate_combination_id(self) -> str:
+        """
+        Compute the hexadecimal identifier for the winning number combination.
+
+        :returns: The combination id encoding the 5 winning numbers.
+        """
         return self._numbers_hex(settings.miloto.max_value)
 
 
 class BalotoSchema(BaseModelSchema):
+    """A single Baloto draw result: winning numbers, super balota, jackpot, and prize tiers."""
+
     game: Literal["baloto", "revancha"] = Field(default="baloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.baloto.first_id, title="Sorteo", description="The unique game id")
-    game_date: date = Field(
+    game_date: datetime.date = Field(
         ge=settings.baloto.first_date,
         title="Fecha",
         description="The unique game date, must be greater than settings.baloto.first_date",
@@ -168,16 +214,25 @@ class BalotoSchema(BaseModelSchema):
 
     @property
     def result_url(self) -> str:
+        """URL of the official Baloto results page."""
         return str(settings.baloto.result_url)
 
     def calculate_combination_id(self) -> str:
-        """Claculates the hexa represenation of the winning combination"""
+        """
+        Compute the hexadecimal identifier for the winning number combination.
+
+        :returns: The combination id encoding the 5 winning numbers and the
+            drawn super balota, joined by a colon.
+        """
         return f"{self._numbers_hex(settings.baloto.max_value)}:{self.super_balota:X}"
 
 
 class RevanchaSchema(BalotoSchema):
+    """A single Revancha draw result, sharing Baloto's winning numbers and super balota."""
+
     game: Literal["baloto", "revancha"] = Field(default="revancha", exclude=True, title="Juego")
 
     @property
     def result_url(self) -> str:
+        """URL of the official Revancha results page."""
         return str(settings.revancha.result_url)

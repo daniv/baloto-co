@@ -1,12 +1,14 @@
-import datetime
-from typing import Any
-import dateparser
+"""Spanish-language date parsing and formatting helpers."""
 
+import datetime
+
+import dateparser
 from babel.dates import format_date
 
 
 def abbreviated_date(dte: datetime.date) -> str:
-    """Format a date as an abbreviated Spanish string (`dd-MMM-yyyy`).
+    """
+    Format a date as an abbreviated Spanish string (`dd-MMM-yyyy`).
 
     Produces a compact date representation suitable for table columns or
     filenames.  The month is shown as a three-letter Spanish abbreviation.
@@ -20,7 +22,8 @@ def abbreviated_date(dte: datetime.date) -> str:
 
 
 def long_date(dte: datetime.date) -> str:
-    """Format a date as a long Spanish string (`d 'de' MMMM 'de' y`).
+    """
+    Format a date as a long Spanish string (`d 'de' MMMM 'de' y`).
 
     Produces a human-friendly date representation with the full month name.
     The result is title-cased and articles are lower-cased for readability.
@@ -35,7 +38,8 @@ def long_date(dte: datetime.date) -> str:
 
 
 def full_date(dte: datetime.date) -> str:
-    """Format a date as a full Spanish string (`EEEE, dd 'de' MMMM 'de' y`).
+    """
+    Format a date as a full Spanish string (`EEEE, dd 'de' MMMM 'de' y`).
 
     Produces the most verbose date representation including the weekday name.
     The result is title-cased and articles are lower-cased for readability.
@@ -49,8 +53,9 @@ def full_date(dte: datetime.date) -> str:
     return formatted.title().replace(" De ", " de ")
 
 
-def parse_spanish_date(value: Any) -> datetime.date:
-    """Parse a Spanish-language date string into a date.
+def parse_spanish_date(value: object) -> datetime.date:
+    """
+    Parse a Spanish-language date string into a date.
 
     :param value: Raw date as provided by the caller (e.g. "3 de
         enero de 2026").
@@ -61,11 +66,13 @@ def parse_spanish_date(value: Any) -> datetime.date:
     if isinstance(value, datetime.date):
         return value
     if not isinstance(value, str):
-        raise TypeError("game_date must be a string or datetime.date")
+        message = "game_date must be a string or datetime.date"
+        raise TypeError(message)
 
     parsed = dateparser.parse(value, languages=["es"], settings={"DATE_ORDER": "DMY", "STRICT_PARSING": True})
 
     if parsed is None:
-        raise ValueError(f"Invalid Spanish date: {value!r}. Expected a value such as '7 de Julio de 2026'.")
+        message = f"Invalid Spanish date: {value!r}. Expected a value such as '7 de Julio de 2026'."
+        raise ValueError(message)
 
     return parsed.date()
