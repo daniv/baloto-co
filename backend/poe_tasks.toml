@@ -39,6 +39,30 @@ help = "Validate the pytest game-selection infrastructure in isolation."
 cmd = "pytest tests/unit/utils/page_tests/infra/game_selection.py -x"
 
 # =============================================================================
+# Database
+# =============================================================================
+
+[tool.poe.groups.database]
+heading = "Database"
+
+[tool.poe.groups.database.tasks.db-upgrade]
+help = "Apply all pending Alembic migrations to the configured database."
+cmd = "alembic upgrade head"
+
+[tool.poe.groups.database.tasks.db-downgrade]
+help = "Revert the most recently applied Alembic migration."
+cmd = "alembic downgrade -1"
+
+[tool.poe.groups.database.tasks.db-revision]
+help = "Autogenerate a new Alembic revision from ORM model changes."
+cmd = "alembic revision --autogenerate -m \"${message}\""
+
+[[tool.poe.groups.database.tasks.db-revision.args]]
+name = "message"
+options = ["--message", "-m"]
+help = "Short description of the schema change."
+
+# =============================================================================
 # Code Quality
 # =============================================================================
 
@@ -47,27 +71,27 @@ heading = "Code Quality"
 
 [tool.poe.groups.quality.tasks.lint]
 help = "Lint application and test code, excluding deferred documentation checks."
-cmd = "ruff check app tests --ignore D100,D101,D102"
+cmd = "ruff check app tests alembic --ignore D100,D101,D102"
 
 [tool.poe.groups.quality.tasks.lint-fix]
 help = "Apply safe Ruff fixes, excluding deferred documentation checks."
-cmd = "ruff check app tests --ignore D100,D101,D102 --fix"
+cmd = "ruff check app tests alembic --ignore D100,D101,D102 --fix"
 
 [tool.poe.groups.quality.tasks.lint-fix-all]
 help = "Apply all safe Ruff fixes to application and test code."
-cmd = "ruff check app tests --fix"
+cmd = "ruff check app tests alembic --fix"
 
 [tool.poe.groups.quality.tasks.lint-docs]
 help = "Check deferred module, class, and method documentation."
-cmd = "ruff check app tests --select D100,D101,D102"
+cmd = "ruff check app tests alembic --select D100,D101,D102"
 
 [tool.poe.groups.quality.tasks.format]
 help = "Format application and test code."
-cmd = "ruff format app tests"
+cmd = "ruff format app tests alembic"
 
 [tool.poe.groups.quality.tasks.format-check]
 help = "Verify formatting without modifying files."
-cmd = "ruff format --check app tests"
+cmd = "ruff format --check app tests alembic"
 
 [tool.poe.groups.quality.tasks.typecheck]
 help = "Run strict static type checking."
@@ -84,9 +108,9 @@ heading = "Quality Workflows"
 [tool.poe.groups.workflows.tasks.check-fast]
 help = "Run static checks and verify that unit tests can be collected."
 sequence = [
-    { cmd = "ruff format --check app tests" },
-    { cmd = "ruff check app tests" },
-    { cmd = "pyright app tests" },
+    { cmd = "ruff format --check app tests alembic" },
+    { cmd = "ruff check app tests alembic" },
+    { cmd = "pyright app tests alembic" },
     { cmd = "pytest tests/unit --collect-only -q" },
 ]
 

@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "alembic>=1.19.1",
+    "asyncpg>=0.31.0",
     "babel>=2.18.0",
     "dateparser>=1.4.2",
     "fastapi[standard]>=0.141.1",
@@ -14,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.15.0",
     "python-dotenv>=1.2.3",
     "rich>=15.0.0",
+    "sqlalchemy[asyncio]>=2.0",
 ]
 
 [dependency-groups]
@@ -53,7 +56,7 @@ env_files_skip_if_set = true
 [tool.ruff]
 target-version = "py314"
 line-length = 120
-src = ["app", "tests"]
+src = ["app", "tests", "alembic"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -79,6 +82,10 @@ ignore = [
     "S101",    # Allow assert statements, which are standard in pytest tests.
     "SLF001",  # Allow tests to access private members when validating internal behavior.
 ]
+"alembic/versions/*.py" = [
+    "D415", # Alembic's revision template docstrings are the raw -m message, not required to end with punctuation.
+    "TC003", # Alembic's revision template always imports Sequence at module level for plain variable annotations.
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -88,7 +95,7 @@ docstring-code-format = true
 docstring-code-line-length = 120
 
 [tool.pyright]
-include = ["app", "tests"]
+include = ["app", "tests", "alembic"]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
