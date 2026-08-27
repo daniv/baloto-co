@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from backend.app.scraper.parsers.baloto import BalotoResultPage
+from app.scraper.parsers.baloto import BalotoResultPage
 
 if TYPE_CHECKING:
     from collections.abc import Callable

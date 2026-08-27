@@ -5,8 +5,6 @@ This module isolates filesystem access, JSON parsing, mocked HTML loading, and
 test-case construction from pytest hooks, fixtures, and Playwright components.
 """
 
-from __future__ import annotations
-
 import json
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, cast
