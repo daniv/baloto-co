@@ -1,4 +1,15 @@
 # =============================================================================
+# Application
+# =============================================================================
+
+[tool.poe.groups.application]
+heading = "Application"
+
+[tool.poe.groups.application.tasks.serve]
+help = "Run the FastAPI app locally with auto-reload."
+cmd = "fastapi dev app/main.py"
+
+# =============================================================================
 # Testing
 # =============================================================================
 

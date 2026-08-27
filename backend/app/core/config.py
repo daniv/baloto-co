@@ -124,6 +124,11 @@ class BackendSettings(BaseSettings):
     db_name: str = "baloto_co"
     db_name_test: str = "test"
 
+    admin_api_key: SecretStr = Field(
+        default_factory=lambda: SecretStr("CHANGE_ME"),
+        description="Shared secret required on the X-Admin-Api-Key header to call admin-only write endpoints.",
+    )
+
     # frozen=True per-field: instance can't be swapped out even though # BackendSettings itself isn't fully frozen
     miloto: MilotoSettings = Field(default_factory=MilotoSettings, frozen=True)
     baloto: BalotoSettings = Field(default_factory=BalotoSettings, frozen=True)
@@ -172,17 +177,23 @@ class BackendSettings(BaseSettings):
         )
 
     @model_validator(mode="after")
-    def verify_db_password_is_changed(self) -> Self:
+    def verify_secrets_are_changed(self) -> Self:
         """
-        Reject the insecure default database password during validation.
+        Reject insecure default values for every secret setting.
 
-        :return: The validated database settings instance.
-        :raises ValueError: If the configured database password is still ``CHANGE_ME``.
+        :return: The validated settings instance.
+        :raises ValueError: If ``db_password`` or ``admin_api_key`` is still ``CHANGE_ME``.
         """
-        if self.db_password.get_secret_value() == "CHANGE_ME":
-            err_msg = "Security Alert: You must override the default DB password!"
-            raise ValueError(err_msg)
+        _reject_default_secret(self.db_password, "db_password")
+        _reject_default_secret(self.admin_api_key, "admin_api_key")
         return self
+
+
+def _reject_default_secret(value: SecretStr, field_name: str) -> None:
+    """Raise if a secret setting still holds its insecure ``CHANGE_ME`` placeholder."""
+    if value.get_secret_value() == "CHANGE_ME":
+        error_message = f"Security Alert: You must override the default {field_name}!"
+        raise ValueError(error_message)
 
 
 settings = BackendSettings()

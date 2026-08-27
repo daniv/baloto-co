@@ -218,7 +218,7 @@ class DrawIdValidator:
         """
         localized_draw_id = int_to_localized_es(self._draw_id)
         expected_text = re.compile(
-            rf"^SORTEO\s+#?{re.escape(localized_draw_id)}$",
+            rf"^\s*SORTEO\s+#?{re.escape(localized_draw_id)}\s*$",
             re.IGNORECASE,
         )
 

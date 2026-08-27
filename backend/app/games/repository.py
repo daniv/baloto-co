@@ -2,17 +2,26 @@
 
 from typing import TYPE_CHECKING
 
+from sqlalchemy import insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.games.models import BalotoDraw, MilotoDraw, RevanchaDraw
-from app.games.schemas import GameSchema, MilotoSchema, ResultDetails
+from app.games.schemas import (
+    BalotoSchema,
+    Game,
+    GameSchema,
+    MilotoSchema,
+    ResultDetails,
+    RevanchaSchema,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 type DrawModel = type[MilotoDraw | BalotoDraw | RevanchaDraw]
+type DrawRow = MilotoDraw | BalotoDraw | RevanchaDraw
 
-_MODEL_BY_GAME: dict[str, DrawModel] = {
+_MODEL_BY_GAME: dict[Game, DrawModel] = {
     "miloto": MilotoDraw,
     "baloto": BalotoDraw,
     "revancha": RevanchaDraw,
@@ -50,6 +59,32 @@ def _draw_values(result: GameSchema) -> dict[str, object]:
     return values
 
 
+async def create_draw(session: AsyncSession, result: GameSchema) -> None:
+    """
+    Insert one validated draw result; fails if it already exists.
+
+    Unlike :func:`save_draw`, this issues a plain ``INSERT`` with no
+    upsert fallback, so creating an already-stored ``game_id`` raises
+    :class:`sqlalchemy.exc.IntegrityError` (primary-key violation)
+    instead of silently overwriting it — corrections to an existing draw
+    should go through :func:`update_draw` instead. The same exception
+    type is raised if ``game_date`` collides with a different existing
+    draw, since ``game_date`` is unique per game.
+
+    :param session: Active session used to execute the statement. The caller
+        owns the transaction and is responsible for committing or rolling
+        back (see :func:`app.core.database.get_session`).
+    :param result: Validated draw result to persist.
+    :return: None.
+    :raises sqlalchemy.exc.IntegrityError: If ``game_id`` or ``game_date`` collides
+        with an already-stored draw.
+    """
+    model = _MODEL_BY_GAME[result.game]
+    values = _draw_values(result)
+
+    await session.execute(insert(model).values(**values))
+
+
 async def save_draw(session: AsyncSession, result: GameSchema) -> None:
     """
     Insert one validated draw result, or update it if already stored.
@@ -75,3 +110,111 @@ async def save_draw(session: AsyncSession, result: GameSchema) -> None:
     statement = statement.on_conflict_do_update(index_elements=["game_id"], set_=update_columns)
 
     await session.execute(statement)
+
+
+def _hit_tier_from_row(payload: dict[str, int] | None) -> ResultDetails | None:
+    """Deserialize a JSONB payout-tier column back into a ``ResultDetails``."""
+    return ResultDetails(**payload) if payload is not None else None
+
+
+def _to_schema(row: DrawRow) -> GameSchema:
+    """Convert one persisted draw row back into its validated pydantic schema."""
+    if isinstance(row, MilotoDraw):
+        return MilotoSchema(
+            game_id=row.game_id,
+            game_date=row.game_date,
+            numbers=row.numbers,
+            accumulated=row.accumulated,
+            hits_3=_hit_tier_from_row(row.hits_3),
+            hits_4=_hit_tier_from_row(row.hits_4),
+            hits_5=_hit_tier_from_row(row.hits_5),
+            hits_2=_hit_tier_from_row(row.hits_2),
+        )
+
+    schema_class = BalotoSchema if isinstance(row, BalotoDraw) else RevanchaSchema
+    return schema_class(
+        game_id=row.game_id,
+        game_date=row.game_date,
+        numbers=row.numbers,
+        accumulated=row.accumulated,
+        hits_3=_hit_tier_from_row(row.hits_3),
+        hits_4=_hit_tier_from_row(row.hits_4),
+        hits_5=_hit_tier_from_row(row.hits_5),
+        super_balota=row.super_balota,
+        hits_sb=_hit_tier_from_row(row.hits_sb),
+        hits_2_sb=_hit_tier_from_row(row.hits_2_sb),
+        hits_3_sb=_hit_tier_from_row(row.hits_3_sb),
+        hits_4_sb=_hit_tier_from_row(row.hits_4_sb),
+        hits_5_sb=_hit_tier_from_row(row.hits_5_sb),
+    )
+
+
+async def get_draw(session: AsyncSession, game: Game, draw_id: int) -> GameSchema | None:
+    """
+    Fetch one persisted draw and convert it back into its validated schema.
+
+    :param session: Active session used to execute the query.
+    :param game: Which per-game table to query.
+    :param draw_id: The draw's official number (``game_id``, the table's primary key).
+    :return: The matching validated schema, or ``None`` if no such draw is stored.
+    """
+    model = _MODEL_BY_GAME[game]
+    row = await session.get(model, draw_id)
+
+    return _to_schema(row) if row is not None else None
+
+
+def _rebuild_with_updates(current: GameSchema, updates: dict[str, object]) -> GameSchema:
+    """Re-validate one schema instance with a partial field update merged in."""
+    data = current.model_dump(exclude={"combination_id"})
+    data.update(updates)
+    return type(current)(**data)
+
+
+async def update_draw(session: AsyncSession, game: Game, draw_id: int, updates: dict[str, object]) -> GameSchema | None:
+    """
+    Apply a partial update to one persisted draw, re-validating the full result.
+
+    Every field present in ``updates`` replaces the stored value; every
+    field left out keeps its current value. The merged result is
+    re-validated through the schema's normal constructor rather than a
+    bypassed shallow copy, so existing invariants (unique/sorted numbers,
+    jackpot floors, no future dates) still apply to a partially corrected
+    draw.
+
+    :param session: Active session used to execute the read and the upsert.
+    :param game: Which per-game table to update.
+    :param draw_id: The draw's official number (``game_id``, the table's primary key).
+    :param updates: Mapping of field name to new value; fields left out are unchanged.
+    :return: The updated, re-validated schema, or ``None`` if no such draw is stored.
+    :raises pydantic.ValidationError: If the merged field values violate the schema's constraints.
+    """
+    current = await get_draw(session, game, draw_id)
+
+    if current is None:
+        return None
+
+    updated = _rebuild_with_updates(current, updates)
+    await save_draw(session, updated)
+    return updated
+
+
+async def delete_draw(session: AsyncSession, game: Game, draw_id: int) -> bool:
+    """
+    Delete one persisted draw by its official draw number.
+
+    :param session: Active session used to execute the statement. The caller
+        owns the transaction and is responsible for committing or rolling
+        back (see :func:`app.core.database.get_session`).
+    :param game: Which per-game table to delete from.
+    :param draw_id: The draw's official number (``game_id``, the table's primary key).
+    :return: ``True`` if a row was deleted, ``False`` if no matching draw was stored.
+    """
+    model = _MODEL_BY_GAME[game]
+    row = await session.get(model, draw_id)
+
+    if row is None:
+        return False
+
+    await session.delete(row)
+    return True

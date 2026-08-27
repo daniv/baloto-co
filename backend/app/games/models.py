@@ -4,11 +4,11 @@
 # declarative mapper resolves `Mapped[...]` annotations at class-creation time
 # to infer each column's SQL type, so the names must exist at runtime.
 from datetime import date, datetime  # noqa: TC003
-from typing import Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
-from sqlalchemy import BigInteger, SmallInteger, func
+from sqlalchemy import BigInteger, SmallInteger, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from app.core.database import Base
 
@@ -26,11 +26,21 @@ class DrawMixin:
     hits-3/4/5 payout tiers, and the derived combination id.
     """
 
+    if TYPE_CHECKING:
+        # Declared by every concrete subclass; not present on the mixin itself.
+        __tablename__: ClassVar[str]
+
+    @declared_attr.directive
+    @classmethod
+    def __table_args__(cls) -> tuple[UniqueConstraint]:
+        """Enforce at most one draw per calendar date for this game's table."""
+        return (UniqueConstraint("game_date", name=f"uq_{cls.__tablename__}_game_date"),)
+
     game_id: Mapped[int] = mapped_column(
         primary_key=True,
         comment="Official draw number ('Sorteo'), unique per game and assigned by the operator.",
     )
-    game_date: Mapped[date] = mapped_column(comment="Calendar date the draw was held.")
+    game_date: Mapped[date] = mapped_column(comment="Calendar date the draw was held; unique per game.")
     numbers: Mapped[list[int]] = mapped_column(
         ARRAY(SmallInteger),
         comment="The 5 winning numbers, ascending and unique, as validated by app.games.schemas.",

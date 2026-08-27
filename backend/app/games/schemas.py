@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.shared.date_utils import parse_spanish_date
 from app.shared.math_utils import numbers_to_hex
 
+type Game = Literal["miloto", "baloto", "revancha"]
 type MilotoLotteryNumber = Annotated[int, Field(ge=1, le=settings.miloto.max_value)]
 type BalotoRevanchaLotteryNumber = Annotated[int, Field(ge=1, le=settings.baloto.max_value)]
 type GameSchema = Annotated[MilotoSchema | BalotoSchema | RevanchaSchema, Field(discriminator="game")]
@@ -172,7 +173,7 @@ class MilotoSchema(BaseModelSchema):
 class BalotoSchema(BaseModelSchema):
     """A single Baloto draw result: winning numbers, super balota, jackpot, and prize tiers."""
 
-    game: Literal["baloto", "revancha"] = Field(default="baloto", exclude=True, title="Juego")
+    game: Literal["baloto"] = Field(default="baloto", exclude=True, title="Juego")
     game_id: int = Field(ge=settings.baloto.first_id, title="Sorteo", description="The unique game id")
     game_date: datetime.date = Field(
         ge=settings.baloto.first_date,
@@ -230,7 +231,12 @@ class BalotoSchema(BaseModelSchema):
 class RevanchaSchema(BalotoSchema):
     """A single Revancha draw result, sharing Baloto's winning numbers and super balota."""
 
-    game: Literal["baloto", "revancha"] = Field(default="revancha", exclude=True, title="Juego")
+    # Narrowing the discriminator literal is required for the GameSchema union to
+    # resolve correctly; pyright's invariance concern doesn't apply since both
+    # classes are frozen=True, so `game` can never actually be reassigned.
+    game: Literal["revancha"] = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
+        default="revancha", exclude=True, title="Juego"
+    )
 
     @property
     def result_url(self) -> str:
