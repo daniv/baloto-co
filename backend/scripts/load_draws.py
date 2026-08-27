@@ -1,9 +1,11 @@
 """
-CLI to scrape-and-save one draw each for Miloto, Baloto, and Revancha.
+CLI to scrape-and-save one draw for any of Miloto, Baloto, and Revancha.
 
 Calls the running API's admin-gated ``POST /{game}/draw/{draw_id}`` route
-for each game in turn (see :mod:`app.games.router`); the app itself drives
+for each game passed (see :mod:`app.games.router`); the app itself drives
 Playwright and builds/validates the payload, this script only triggers it.
+Pass only the games you want loaded -- e.g. just ``--miloto`` to load a
+single Miloto draw.
 """
 
 import argparse
@@ -24,17 +26,24 @@ class GameDraw:
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    """Parse CLI arguments for the three draw ids and the target server."""
+    """Parse CLI arguments for the requested draw ids and the target server."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("miloto_id", type=int, help="Miloto draw_id to scrape and save")
-    parser.add_argument("baloto_id", type=int, help="Baloto draw_id to scrape and save")
-    parser.add_argument("revancha_id", type=int, help="Revancha draw_id to scrape and save")
+    parser.add_argument("--miloto", type=int, default=None, metavar="DRAW_ID", help="Miloto draw_id to scrape and save")
+    parser.add_argument("--baloto", type=int, default=None, metavar="DRAW_ID", help="Baloto draw_id to scrape and save")
+    parser.add_argument(
+        "--revancha", type=int, default=None, metavar="DRAW_ID", help="Revancha draw_id to scrape and save"
+    )
     parser.add_argument(
         "--base-url",
         default="http://127.0.0.1:8000",
         help="Base URL of the running API (default: %(default)s)",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    if args.miloto is None and args.baloto is None and args.revancha is None:
+        parser.error("provide at least one of --miloto, --baloto, --revancha")
+
+    return args
 
 
 def _load_draw(client: httpx.Client, draw: GameDraw) -> bool:
@@ -59,17 +68,14 @@ def _load_draw(client: httpx.Client, draw: GameDraw) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Load one draw each for Miloto, Baloto, and Revancha, in that order.
+    Load one draw for each requested game, in Miloto/Baloto/Revancha order.
 
     :param argv: Command-line arguments, or ``None`` to use ``sys.argv``.
-    :return: Process exit code: 0 if every draw loaded successfully, 1 otherwise.
+    :return: Process exit code: 0 if every requested draw loaded successfully, 1 otherwise.
     """
     args = _parse_args(sys.argv[1:] if argv is None else argv)
-    draws = [
-        GameDraw("miloto", args.miloto_id),
-        GameDraw("baloto", args.baloto_id),
-        GameDraw("revancha", args.revancha_id),
-    ]
+    requested = [("miloto", args.miloto), ("baloto", args.baloto), ("revancha", args.revancha)]
+    draws = [GameDraw(game, draw_id) for game, draw_id in requested if draw_id is not None]
 
     headers = {"X-Admin-Api-Key": settings.admin_api_key.get_secret_value()}
     try:

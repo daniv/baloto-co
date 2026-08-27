@@ -10,23 +10,8 @@ help = "Run the FastAPI app locally. No auto-reload: on Windows, uvicorn's --rel
 cmd = "uvicorn app.main:app"
 
 [tool.poe.groups.application.tasks.load-draws]
-help = "Scrape and save one draw each for Miloto, Baloto, and Revancha via the running API."
-cmd = "python -m scripts.load_draws ${miloto_id} ${baloto_id} ${revancha_id}"
-
-[[tool.poe.groups.application.tasks.load-draws.args]]
-name = "miloto_id"
-positional = true
-help = "Miloto draw_id to scrape and save."
-
-[[tool.poe.groups.application.tasks.load-draws.args]]
-name = "baloto_id"
-positional = true
-help = "Baloto draw_id to scrape and save."
-
-[[tool.poe.groups.application.tasks.load-draws.args]]
-name = "revancha_id"
-positional = true
-help = "Revancha draw_id to scrape and save."
+help = "Scrape and save a draw for any of Miloto/Baloto/Revancha via the running API. Pass only the games you want, e.g. --miloto 913."
+cmd = "python -m scripts.load_draws"
 
 # =============================================================================
 # Testing
