@@ -119,7 +119,7 @@ class MilotoResultPage(BasePage):
 
     def _winner_numbers(self) -> Locator:
         """Return the locator containing the five Miloto winning numbers."""
-        has_text = re.compile(r"^ACUMULADO DEL SORTEO", re.IGNORECASE)
+        has_text = re.compile(r"ACUMULADO DEL SORTEO", re.IGNORECASE)
         result_container = (self._page.locator("div.text-center.mt-5.mb-5").filter(has_text=has_text)).describe(
             "container ACUMULADO DEL SORTEO"
         )

@@ -338,7 +338,7 @@ class BalotoRevanchaResultPage(BasePage):
         :raises TimeoutError: If Playwright cannot read the superball text.
         :raises ValueError: If the displayed value cannot be converted to an integer.
         """
-        balota_text = await get_inner_text(self._balota())
+        balota_text = await get_required_text(self._balota(), "balota")        
         try:
             return int(balota_text)
         except ValueError as error:

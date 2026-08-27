@@ -179,10 +179,8 @@ async def require_exact_count(
     :param timeout_ms: Maximum time in milliseconds to wait for the expected count.
     :raises AssertionError: If the locator does not reach ``expected_count`` before the timeout.
     """
-    await expect(
-        locator,
-        f"{field_name} should contain exactly {expected_count} node(s)",
-    ).to_have_count(expected_count, timeout=timeout_ms)
+    msg = f"{field_name} should contain exactly {expected_count} node(s)"
+    await expect(locator, msg).to_have_count(expected_count, timeout=timeout_ms)
 
 
 async def get_required_text(locator: Locator, field_name: str) -> str:

@@ -278,10 +278,7 @@ class PageTitleValidator:
         :param page: Loaded Playwright page to validate.
         :raises AssertionError: If the page title is not exactly ``Miloto``.
         """
-        await expect(
-            page,
-            "Loaded page title should identify the Miloto game",
-        ).to_have_title("Miloto")
+        await expect(page, "Loaded page title should identify the Miloto game").to_have_title("Miloto", timeout=500)
 
 
 class RevanchaImageValidator:

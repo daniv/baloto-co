@@ -1,0 +1,49 @@
+{
+  "jackpot": {
+    "html_file": "miloto_jackpot.html",
+    "tc_description": "a miloto game with jackpot winner",
+    "expected": {
+      "game_id": 576,
+      "game_date": "23 de Julio de 2026",
+      "winner_numbers": [7, 11, 12, 30, 39],
+      "accumulated_prize": 230000000,
+      "details": {
+        "hits_5": { "winners": 3, "prize_for_winner": 76666650 },
+        "hits_4": { "winners": 72, "prize_for_winner": 260600 },
+        "hits_3": { "winners": 2006, "prize_for_winner": 15200 },
+        "hits_2": { "winners": 16313, "prize_for_winner": 4000 }
+      }
+    }
+  },
+  "no_jackpot": {
+    "html_file": "miloto_no_jackpot.html",
+    "tc_description": "a miloto game without jackpot winner",
+    "expected": {
+      "game_id": 579,
+      "game_date": "28 de Julio de 2026",
+      "winner_numbers": [1, 27, 28, 33, 35],
+      "accumulated_prize": 200000000,
+        "details": {
+          "hits_4": { "winners": 5, "prize_for_winner": 3996400 },
+          "hits_3": { "winners": 298, "prize_for_winner": 118150 },
+          "hits_2": { "winners": 5832, "prize_for_winner": 4000 }
+        }
+      }
+  },
+  "missing_date": {
+    "html_file": "miloto_missing_date.html",
+    "tc_description": "a miloto game without the date information",
+    "expected": {
+      "game_id": 576,
+      "game_date": "23 de Julio de 2026"
+    }
+  },
+  "missing_accumulated": {
+    "html_file": "miloto_missing_acc.html",
+    "tc_description": "a miloto game without the accumulated information",
+    "expected": {
+      "game_id": 576,
+      "accumulated_prize": "$230 MILLONES"
+    }
+  }
+}

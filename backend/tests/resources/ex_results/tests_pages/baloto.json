@@ -1,0 +1,76 @@
+{
+  "no_jackpot": {
+    "html_file": "baloto_no_jackpot.html",
+    "tc_description": "a baloto game without jackpot winner",
+    "game": "baloto",
+    "expected": {
+      "game_id": 2686,
+      "game_date": "22 de Julio de 2026",
+      "winner_numbers": [3, 6, 19, 30, 33],
+      "balota": 9,
+      "accumulated_prize": 49200000000,
+      "details": {
+        "hits_5": { "winners": 1, "prize_for_winner": 39884850 },
+        "hits_4_sb": { "winners": 4, "prize_for_winner": 1998400 },
+        "hits_4": { "winners": 50, "prize_for_winner": 174850 },
+        "hits_3_sb": { "winners": 160, "prize_for_winner": 47350 },
+        "hits_3": { "winners": 2154, "prize_for_winner": 11500 },
+        "hits_2_sb": { "winners": 2045, "prize_for_winner": 9650 },
+        "hits_sb": { "winners": 21509, "prize_for_winner": 6000 }
+      }
+    }
+  },
+  "jackpot": {
+    "html_file": "baloto_jackpot.html",
+    "tc_description": "a baloto game with jackpot winner",
+    "game": "baloto",
+    "expected": {
+      "game_id": 2576,
+      "game_date": "08 de Noviembre de 2025",
+      "winner_numbers": [1, 6, 18, 21, 24],
+      "balota": 12,
+      "accumulated_prize": 29000000000,
+      "details": {
+        "hits_5_sb": { "winners": 1, "prize_for_winner": 29000000000 },
+        "hits_4_sb": { "winners": 7, "prize_for_winner": 1378800 },
+        "hits_4": { "winners": 104, "prize_for_winner": 101500 },
+        "hits_3_sb": { "winners": 232, "prize_for_winner": 39450 },
+        "hits_3": { "winners": 3247, "prize_for_winner": 9200 },
+        "hits_2_sb": { "winners": 2493, "prize_for_winner": 9550 },
+        "hits_sb": { "winners": 24384, "prize_for_winner": 6000 }
+      }
+    }
+  },
+  "missing_date": {
+    "html_file": "baloto_missing_date.html",
+    "tc_description": "a baloto game without the date information winner",
+    "game": "baloto",
+     "expected": {
+      "game_id": 2576
+     }
+  },
+  "missing_accumulated": {
+    "html_file": "baloto_missing_acc.html",
+    "tc_description": "a baloto game without the accumulated information",
+    "expected": {
+      "game_id": 576,
+      "game_date": "23 de Julio de 2026"
+    }
+  },
+  "missing_1_result": {
+    "html_file": "baloto_missing_1_result.html",
+    "tc_description": "a baloto game missing one of the winning numbers",
+    "expected": {
+      "game_id": 2576,
+      "game_date": "08 de Noviembre de 2025"
+    }
+  },
+  "no_sb": {
+    "html_file": "baloto_missing_sb.html",
+    "tc_description": "a baloto game missing the super balota",
+    "expected": {
+      "game_id": 2576,
+      "game_date": "08 de Noviembre de 2025"
+    }
+  }
+}

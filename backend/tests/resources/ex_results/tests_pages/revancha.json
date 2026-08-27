@@ -1,0 +1,41 @@
+{
+  "no_jackpot": {
+    "html_file": "revancha_no_jackpot.html",
+    "tc_description": "a revancha game without jackpot winner",
+    "expected": {
+      "game_id": 2687,
+      "game_date": "25 de Julio de 2026",
+      "winner_numbers": [1, 6, 30, 31, 35],
+      "balota": 2,
+      "accumulated_prize": 8800000000,
+        "details": {
+          "hits_4": { "winners": 24, "prize_for_winner": 236600 },
+          "hits_3_sb": { "winners": 74, "prize_for_winner": 66500 },
+          "hits_3": { "winners": 1498, "prize_for_winner": 10700 },
+          "hits_2_sb": { "winners": 1523, "prize_for_winner": 8400 },
+          "hits_sb": { "winners": 19430, "prize_for_winner": 3000 }
+        }
+      }
+   },
+   "jackpot": {
+    "html_file": "revancha_jackpot.html",
+    "tc_description": "a revancha game with jackpot winner",
+    "game": "revancha",
+    "expected": {
+      "game_id": 2652,
+      "game_date": "04 de Mayo de 2026",
+      "winner_numbers": [3, 5, 17, 24, 38],
+      "balota": 11,
+      "accumulated_prize": 22300000000,
+      "details": {
+        "hits_5_sb": { "winners": 1, "prize_for_winner": 22300000000 },
+        "hits_4_sb": { "winners": 1, "prize_for_winner": 1968050 },
+        "hits_4": { "winners": 35, "prize_for_winner": 61500 },
+        "hits_3_sb": { "winners": 81, "prize_for_winner": 23050 },
+        "hits_3": { "winners": 1110, "prize_for_winner": 5500 },
+        "hits_2_sb": { "winners": 1128, "prize_for_winner": 4300 },
+        "hits_sb": { "winners": 10701, "prize_for_winner": 3000 }
+      }
+    }
+  }
+}
