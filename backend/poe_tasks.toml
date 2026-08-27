@@ -6,8 +6,8 @@
 heading = "Application"
 
 [tool.poe.groups.application.tasks.serve]
-help = "Run the FastAPI app locally with auto-reload."
-cmd = "fastapi dev app/main.py"
+help = "Run the FastAPI app locally. No auto-reload: on Windows, uvicorn's --reload supervisor forces WindowsSelectorEventLoopPolicy, which breaks Playwright's subprocess-based browser launch on startup."
+cmd = "uvicorn app.main:app"
 
 # =============================================================================
 # Testing

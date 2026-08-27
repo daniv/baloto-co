@@ -21,7 +21,7 @@ All commands run from `backend/`, via `uv`.
 - Tests: `uv run poe test` / stop-on-first + verbose: `uv run poe test-xvv` / with coverage: `uv run poe testcov`
 - Run one test file/dir with slowest-duration report: `uv run poe test-perf --path <path> --durations <n>`
 - Run a single test directly: `uv run pytest <path>::<test_name> -x -vv`
-- Run the API locally with auto-reload: `uv run poe serve` (`fastapi dev app/main.py`)
+- Run the API locally: `uv run poe serve` (`uvicorn app.main:app`, no `--reload` — see note below)
 - Apply/revert Alembic migrations: `uv run poe db-upgrade` / `uv run poe db-downgrade`
 - Autogenerate a migration from ORM model changes: `uv run poe db-revision -m "<message>"`
 
@@ -42,6 +42,7 @@ Notes:
   ```
   then `NODE_EXTRA_CA_CERTS=<path-to-that-file> uv run playwright install chromium`.
 - Ruff lint uses `select = ["ALL"]` (see `pyproject.toml`) with a short explicit ignore list — new rule categories are opt-out, not opt-in.
+- No `--reload` in `poe serve`: on Windows, `uvicorn`'s reload supervisor (and `fastapi dev`, which enables reload by default) forces `asyncio.WindowsSelectorEventLoopPolicy`. `PlaywrightClient` needs `asyncio.create_subprocess_exec` to launch the browser, which only `WindowsProactorEventLoopPolicy` supports — under the reload supervisor, app startup fails with `NotImplementedError` from `asyncio/base_events.py`. Plain `uvicorn app.main:app` (no reload) uses the default Proactor policy and starts fine; restart the process manually after code changes instead.
 - Local Postgres: `docker-compose.yml` (repo root) runs a single Postgres container, reading `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`/port from the repo-root `.env` (`DB_USER`/`DB_PASSWORD`/`DB_NAME`/`DB_PORT` — same variables `app/core/config.py` reads). `docker compose up -d` creates and starts it with no manual `CREATE DATABASE` step; data persists in the `postgres_data` named volume across restarts. The app itself still runs on the host (not containerized), connecting to the container over the mapped port — `DB_HOST` stays `localhost`. Run `uv run poe db-upgrade` after the container is up to apply the schema.
 
 ## Architecture
