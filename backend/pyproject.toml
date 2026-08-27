@@ -56,7 +56,7 @@ env_files_skip_if_set = true
 [tool.ruff]
 target-version = "py314"
 line-length = 120
-src = ["app", "tests", "alembic"]
+src = ["app", "tests", "alembic", "scripts"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -95,7 +95,7 @@ docstring-code-format = true
 docstring-code-line-length = 120
 
 [tool.pyright]
-include = ["app", "tests", "alembic"]
+include = ["app", "tests", "alembic", "scripts"]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
 reportMissingTypeStubs = false
