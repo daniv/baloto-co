@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING, Self
 from fastapi import Request  # noqa: TC002
 from playwright.async_api import async_playwright
 
+from app.core.config import settings
+
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
     from types import TracebackType
@@ -40,7 +42,7 @@ class PlaywrightClient:
     async def __aenter__(self) -> Self:
         """Launch Chromium and open the shared browser context."""
         playwright = await self._exit_stack.enter_async_context(async_playwright())
-        browser = await playwright.chromium.launch(headless=True)
+        browser = await playwright.chromium.launch(headless=settings.playwright_headless)
         self._exit_stack.push_async_callback(browser.close)
         self._context = await browser.new_context(locale="es-CO")
         self._exit_stack.push_async_callback(self._context.close)

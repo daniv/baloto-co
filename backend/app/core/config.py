@@ -136,6 +136,11 @@ class BackendSettings(BaseSettings):
 
     verbosity: int = Field(default=0, title="Dev mode verbosity", frozen=False)
 
+    playwright_headless: bool = Field(
+        default=True,
+        description="Whether the shared Chromium browser launches headless. Set to False to watch it navigate.",
+    )
+
     @classmethod
     def settings_customise_sources(
         cls,
