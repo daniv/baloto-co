@@ -7,14 +7,11 @@ that rolls back after each test so no test leaks data into the next one.
 """
 
 import pytest
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from collections.abc import Awaitable, Generator
 
 GAMES_LIST: tuple[str, ...] = ("miloto", "baloto", "revancha")
 
 # region Pytest hooks
+
 
 @pytest.hookimpl
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -32,6 +29,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         choices=["miloto", "baloto", "revancha"],
         help="Run tests on the specified game. Options: miloto, baloto, revancha.",
     )
+
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config: pytest.Config) -> None:

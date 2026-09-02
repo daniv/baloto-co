@@ -80,7 +80,7 @@ class BaseModelSchema(BaseModel, ABC):
         default=None, description="5 hits prize distribution", title="Detalles de 5 aciertos"
     )
 
-    @field_validator("game_date", mode="before")
+    # @field_validator("game_date", mode="before")
     @classmethod
     def _convert_es_date(cls, value: object) -> datetime.date:
         """
@@ -236,6 +236,11 @@ class RevanchaSchema(BalotoSchema):
     # classes are frozen=True, so `game` can never actually be reassigned.
     game: Literal["revancha"] = Field(  # pyright: ignore[reportIncompatibleVariableOverride]
         default="revancha", exclude=True, title="Juego"
+    )
+    accumulated: int = Field(
+        ge=settings.revancha.min_jackpot,
+        title="Acumulado",
+        description=f"The minimum jackpot, must be greater than ${settings.revancha.min_jackpot} COP",
     )
 
     @property

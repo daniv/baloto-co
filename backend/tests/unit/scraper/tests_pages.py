@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
-from app.scraper import BalotoResultPage, RevanchaResultPage, MilotoResultPage
+from app.scraper import BalotoResultPage, MilotoResultPage, RevanchaResultPage
 from playwright.async_api import Page, Response
 from pytest_mock import MockerFixture
 
@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
     from app.scraper import ResultPage
     from playwright.async_api import Page
-    from tests.unit.scraper.model import ValidGames
 
     from tests.unit.scraper.conftest import (
         case_page,
@@ -18,7 +17,8 @@ if TYPE_CHECKING:
         game_name,
         result_page_factory,
     )
-    
+    from tests.unit.scraper.model import ValidGames
+
     _FIXTURE_IMPORTS: tuple[object, ...] = (
         case_page,
         expected_result,
@@ -60,7 +60,9 @@ async def test_validate_all_fields(
 
     if game_name != "miloto":
         expected_balota = expected.pop("balota")
-        br_page = cast("BalotoResultPage", result_page) if game_name == "baloto" else cast("RevanchaResultPage", result_page)
+        br_page = (
+            cast("BalotoResultPage", result_page) if game_name == "baloto" else cast("RevanchaResultPage", result_page)
+        )
         actual_balota = await br_page.get_balota()
 
         assert actual_balota == expected_balota, (
@@ -190,11 +192,7 @@ async def test_open_rejects_an_incorrect_final_url(
 
 @pytest.mark.asyncio(loop_scope="module")
 @pytest.mark.parametrize("err_type", ["response_none", "response_notok"])
-async def test_open_rejects_an_invalid_navigation_response(
-    page: Page,
-    mocker: MockerFixture,
-    err_type: str
-) -> None:
+async def test_open_rejects_an_invalid_navigation_response(page: Page, mocker: MockerFixture, err_type: str) -> None:
     """
     Verify that ``open()`` rejects missing and unsuccessful navigation responses.
 
@@ -202,7 +200,6 @@ async def test_open_rejects_an_invalid_navigation_response(
     external network traffic while exercising both HTTP-response guard clauses
     implemented by ``BasePage.open()``.
     """
-
     result_page = MilotoResultPage(page, 1)
 
     if err_type == "response_none":
@@ -241,4 +238,3 @@ async def test_open_raises_playwright_error_when_browser_offline(page: Page) -> 
         await miloto_page.open()
 
     assert "ERR_INTERNET_DISCONNECTED" in str(exc_info.value)
-

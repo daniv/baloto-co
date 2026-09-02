@@ -55,13 +55,14 @@ async def scrape_draw(page: Page, game: Game, draw_id: int) -> GameSchema:
         raise
 
     game_id = await result_page.get_game_id()
-    game_date = parse_spanish_date(await result_page.get_game_date())
+    spanish_date = await result_page.get_game_date()
+    game_date = parse_spanish_date(spanish_date)
     numbers = await result_page.get_winner_numbers()
     accumulated = await result_page.get_accumulated_prize()
     details = await result_page.get_details()
 
     if isinstance(result_page, MilotoResultPage):
-        return MilotoSchema(
+        schema = MilotoSchema(
             game_id=game_id,
             game_date=game_date,
             numbers=numbers,
@@ -71,6 +72,8 @@ async def scrape_draw(page: Page, game: Game, draw_id: int) -> GameSchema:
             hits_4=details.get("4"),
             hits_5=details.get("5"),
         )
+
+        return schema
 
     schema_class = BalotoSchema if isinstance(result_page, BalotoResultPage) else RevanchaSchema
     return schema_class(

@@ -37,7 +37,7 @@ class MilotoSettings(GameSettings):
     """
 
     first_id: int = Field(default=1, description="First miloto draw number")
-    first_date: date = Field(default=date(2023, 10, 23), description="The fist miloto draw date")
+    first_date: date = Field(default=date(2023, 10, 20), description="The fist miloto draw date")
     min_jackpot: int = Field(default=120_000_000, description="The minimum miloto jackpot prize in COP")
     min_hits_prize: int = Field(default=4_000, description="The lowest prize for 2 acerts, in COP")
     max_value: int = Field(default=39, description="The max miloto number option to select")
@@ -62,9 +62,9 @@ class BalotoSettings(GameSettings):
 
     model_config = SettingsConfigDict(frozen=True, extra="forbid")
 
-    first_id: int = Field(default=2082, description="First baloto/revancha draw number")
-    first_date: date = Field(default=date(2021, 5, 5), description="The fist baloto/revancha draw date")
-    min_jackpot: int = Field(default=2_000_000_000, description="The minimum baloto/revancha jackpot prize in COP")
+    first_id: int = Field(default=2081, description="First baloto/revancha draw number")
+    first_date: date = Field(default=date(2021, 5, 1), description="The fist baloto/revancha draw date")
+    min_jackpot: int = Field(default=2_000_000_000, description="The minimum baloto jackpot prize in COP")
     min_hits_prize: int = Field(default=6_000, description="The lowest baloto prize for SB acert, in COP")
     max_value: int = Field(default=43, description="The max baloto/revancha number option to select")
     max_super_balota: int = Field(default=16, description="The max super-balota value for baloto/revancha")
@@ -92,6 +92,7 @@ class RevanchaSettings(BalotoSettings):
         default_factory=lambda: HttpUrl("https://www.baloto.com/resultados-revancha/"),
         description="the revancha base results URL",
     )
+    min_jackpot: int = Field(default=1_000_000_000, description="The minimum revancha jackpot prize in COP")
 
 
 class BackendSettings(BaseSettings):

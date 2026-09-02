@@ -6,13 +6,11 @@ from typing import TYPE_CHECKING, Self
 # Request must stay a real (not TYPE_CHECKING-only) import: FastAPI resolves
 # get_page's parameter annotations at runtime to recognize its special
 # injectable types -- same constraint as app.games.models/app.games.router.
-from fastapi import Request  # noqa: TC002
 from playwright.async_api import async_playwright
 
 from app.core.config import settings
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
     from types import TracebackType
 
     from playwright.async_api import BrowserContext, Page
@@ -70,25 +68,3 @@ class PlaywrightClient:
             raise RuntimeError(error_message)
 
         return await self._context.new_page()
-
-
-async def get_page(request: Request) -> AsyncGenerator[Page]:
-    """
-    Yield a fresh page from the running app's shared :class:`PlaywrightClient`.
-
-    Intended for use as a FastAPI dependency (``Depends(get_page)``): each
-    request gets its own isolated page, always closed afterward regardless
-    of how the request ends. The client itself lives on ``app.state``
-    because, unlike :data:`app.core.database.engine`, it cannot be built
-    at import time — launching a browser requires ``await``.
-
-    :param request: Current request, used to reach ``request.app.state.playwright_client``.
-    :return: Asynchronous generator yielding one :class:`~playwright.async_api.Page`.
-    """
-    client: PlaywrightClient = request.app.state.playwright_client
-    page = await client.new_page()
-
-    try:
-        yield page
-    finally:
-        await page.close()

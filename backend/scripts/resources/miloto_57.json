@@ -1,0 +1,25 @@
+{
+  "game_date": "2024-01-26",
+  "numbers": [
+    2,
+    14,
+    21,
+    34,
+    38
+  ],
+  "hits_3": {
+    "prize_for_winner": 60400,
+    "winners": 269
+  },
+  "hits_4": {
+    "prize_for_winner": 768100,
+    "winners": 12
+  },
+  "hits_5": null,
+  "game_id": 57,
+  "accumulated": 160000000,
+  "hits_2": {
+    "prize_for_winner": 4000,
+    "winners": 3426
+  }
+}

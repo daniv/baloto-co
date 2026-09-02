@@ -11,7 +11,6 @@ validation is covered by the schema test suite and is not exercised here.
 from typing import TYPE_CHECKING, cast
 
 import pytest
-
 from app.scraper.parsers.baloto import BalotoResultPage
 
 if TYPE_CHECKING:
@@ -19,15 +18,17 @@ if TYPE_CHECKING:
 
     from app.scraper import ResultPage
     from playwright.async_api import Page
+
     from tests.unit.scraper.loaders import GameCaseLoader
     from tests.unit.scraper.model import ValidGames
+
 
 async def shared_missing_data_loader(
     page: Page,
     result_page_factory: Callable[[Page, int], ResultPage],
-    game_case_loader: GameCaseLoader, 
-          game_name: ValidGames,
-          key: str
+    game_case_loader: GameCaseLoader,
+    game_name: ValidGames,
+    key: str,
 ) -> ResultPage:
     game_case = game_case_loader.load(
         module_name="tests_pages",
@@ -50,7 +51,6 @@ async def test_missing_date_raises(
     result_page_factory: Callable[[Page, int], ResultPage],
 ) -> None:
     """Verify that a result document without a draw date raises an AssertionError."""
-
     result_page = await shared_missing_data_loader(
         page, result_page_factory, game_case_loader, game_name, "missing_date"
     )
@@ -114,23 +114,26 @@ async def test_missing_accumulated_raises(
     with pytest.raises(AssertionError, match="accumulated prize should contain exactly 1 node"):
         await result_page.get_accumulated_prize()
 
+
 @pytest.mark.only_game("miloto")
 @pytest.mark.asyncio(loop_scope="module")
-@pytest.mark.parametrize("text, replace", [
+@pytest.mark.parametrize(
+    "text, replace",
+    [
         pytest.param("ACUMULADO DEL SORTEO", "", id="no_title"),
         pytest.param("$230 MILLONES", "100", id="invalid_format"),
         pytest.param("$230 MILLONES", "-$230 MILLONES", id="negative"),
-    ]
+    ],
 )
 async def test_invalid_accumulated_format_raises(
     game_name: ValidGames,
     game_case_loader: GameCaseLoader,
     page: Page,
     result_page_factory: Callable[[Page, int], ResultPage],
-    text: str, replace: str
+    text: str,
+    replace: str,
 ) -> None:
     """Verify that the accumulated not matching the expected text pattern raises an error."""
-
     game_case = game_case_loader.load(
         module_name="tests_pages",
         game_name=game_name,
@@ -143,7 +146,7 @@ async def test_invalid_accumulated_format_raises(
         "HTML; the in-memory replacement would silently do nothing."
     )
     damaged_html = game_case.html_content.replace(text, replace)
-    
+
     await page.set_content(
         damaged_html,
         wait_until="domcontentloaded",
@@ -154,20 +157,19 @@ async def test_invalid_accumulated_format_raises(
     with pytest.raises(AssertionError, match="accumulated prize should contain exactly 1 node"):
         await result_page.get_accumulated_prize()
 
+
 @pytest.mark.only_game("baloto")
 @pytest.mark.asyncio(loop_scope="module")
 async def test_missing_sb_result(
     game_name: ValidGames,
     game_case_loader: GameCaseLoader,
     page: Page,
-    result_page_factory: Callable[[Page, int], ResultPage]
+    result_page_factory: Callable[[Page, int], ResultPage],
 ) -> None:
     """
     Verify that a result document without a super-balota result raises an AssertionError."""
-    result_page = await shared_missing_data_loader(
-        page, result_page_factory, game_case_loader, game_name, "no_sb"
-    )
+    result_page = await shared_missing_data_loader(page, result_page_factory, game_case_loader, game_name, "no_sb")
 
     with pytest.raises(AssertionError, match="balota should contain exactly 1 node"):
-        result_page = cast(BalotoResultPage, result_page)
+        result_page = cast("BalotoResultPage", result_page)
         await result_page.get_balota()

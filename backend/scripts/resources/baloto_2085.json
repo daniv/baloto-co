@@ -1,0 +1,39 @@
+{
+  "game_date": "2021-05-15",
+  "numbers": [
+    3,
+    5,
+    25,
+    30,
+    42
+  ],
+  "hits_3": {
+    "prize_for_winner": 10315,
+    "winners": 2265
+  },
+  "hits_4": {
+    "prize_for_winner": 135405,
+    "winners": 61
+  },
+  "hits_5": null,
+  "game_id": 2085,
+  "accumulated": 10500000000,
+  "super_balota": 8,
+  "hits_sb": {
+    "prize_for_winner": 5700,
+    "winners": 11686
+  },
+  "hits_2_sb": {
+    "prize_for_winner": 8474,
+    "winners": 2202
+  },
+  "hits_3_sb": {
+    "prize_for_winner": 45022,
+    "winners": 159
+  },
+  "hits_4_sb": {
+    "prize_for_winner": 2517248,
+    "winners": 3
+  },
+  "hits_5_sb": null
+}

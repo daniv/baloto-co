@@ -49,6 +49,7 @@ The design follows the SOLID principles:
   test infrastructure depends on explicit case, loader, and factory
   abstractions instead of loading external resources directly inside tests.
 """
+
 from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -246,6 +247,7 @@ async def case_page(page: Page, game_case: GameTestCase) -> Page:
     )
     return page
 
+
 @pytest_asyncio.fixture(name="mocked_url", loop_scope="module")
 async def identity_page(
     page: Page,
@@ -332,4 +334,3 @@ def expected_result(game_case: GameTestCase) -> dict[str, Any]:
 
 
 # endregion
-
