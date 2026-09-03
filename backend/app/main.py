@@ -1,9 +1,9 @@
-"""FastAPI application entrypoint: the app instance"""
+"""FastAPI application entrypoint: the app instance."""
 
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.games.router import build_game_router
+from app.games.router import baloto_router, miloto_router, revancha_router
 
 app = FastAPI(
     title=settings.name,
@@ -13,9 +13,10 @@ app = FastAPI(
 
 
 @app.get("/")
-async def read_root():
+async def read_root() -> dict[str, str]:
+    """Return a trivial health-check response."""
     return {"Hello": "World"}
 
 
-for game in ("miloto", "baloto", "revancha"):
-    app.include_router(build_game_router(game))
+for router in (miloto_router, baloto_router, revancha_router):
+    app.include_router(router)

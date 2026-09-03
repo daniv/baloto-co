@@ -1,15 +1,24 @@
+"""
+Test the page-object validators and ``open()`` navigation behavior.
+
+The suite covers field-level validation of the ``ResultPage`` page objects and the
+validator-registry rejections raised during ``open()`` (wrong final URL, invalid
+navigation response, and browser-offline failures), plus ``draw_id`` validation.
+"""
+
 from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from app.scraper import BalotoResultPage, MilotoResultPage, RevanchaResultPage
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page, Response
-from pytest_mock import MockerFixture
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from app.scraper import ResultPage
     from playwright.async_api import Page
+    from pytest_mock import MockerFixture
 
     from tests.unit.scraper.conftest import (
         case_page,
@@ -148,13 +157,15 @@ async def test_validate_all_fields(
 @pytest.mark.crossgames
 def test_validate_page_init_fail_invalid_drawid(game_name: ValidGames, page: Page) -> None:
     """Validate that an invalid draw identifier is rejected during initialization."""
-    with pytest.raises(ValueError, match="draw_id must be greater"):
-        match game_name:
-            case "miloto":
+    match game_name:
+        case "miloto":
+            with pytest.raises(ValueError, match="draw_id must be greater"):
                 MilotoResultPage(page, 0)
-            case "baloto":
+        case "baloto":
+            with pytest.raises(ValueError, match="draw_id must be greater"):
                 BalotoResultPage(page, 0)
-            case "revancha":
+        case "revancha":
+            with pytest.raises(ValueError, match="draw_id must be greater"):
                 RevanchaResultPage(page, 0)
 
 
@@ -219,9 +230,6 @@ async def test_open_rejects_an_invalid_navigation_response(page: Page, mocker: M
         await result_page.open()
 
     assert str(exc_info.value) == expected_message
-
-
-from playwright.async_api import Error as PlaywrightError
 
 
 @pytest.mark.asyncio(loop_scope="module")

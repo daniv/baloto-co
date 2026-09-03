@@ -80,7 +80,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help=("Skip the API and instead save each scraped draw to scripts/resources/<game>_<draw_id>.json."),
     )
-    parser.add_argument("-v", "--verbose", action="store_true",  help="Enable verbose output")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
     args = parser.parse_args(argv)
 
     if args.miloto is None and args.baloto is None and args.revancha is None:
@@ -89,7 +89,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     return args
 
 
-def _create_payload(result: GameSchema, verbose: bool = False) -> dict[str, object]:
+def _create_payload(result: GameSchema, *, verbose: bool = False) -> dict[str, object]:
     """
     Build the DB-create request body from a scraped, validated schema.
 
@@ -107,7 +107,7 @@ def _create_payload(result: GameSchema, verbose: bool = False) -> dict[str, obje
     return result.model_dump(mode="json", exclude={"combination_id"})
 
 
-def _save_json(game: Game, draw_id: int, payload: dict[str, object], verbose: bool = False) -> Path:
+def _save_json(game: Game, draw_id: int, payload: dict[str, object], *, verbose: bool = False) -> Path:
     """
     Write a scraped draw's payload to ``scripts/resources/<game>_<draw_id>.json``.
 
@@ -131,7 +131,7 @@ def _save_json(game: Game, draw_id: int, payload: dict[str, object], verbose: bo
 
 
 async def _load_draw(
-    playwright_client: PlaywrightClient, http_client: httpx.AsyncClient | None, draw: GameDraw, verbose: bool = False
+    playwright_client: PlaywrightClient, http_client: httpx.AsyncClient | None, draw: GameDraw, *, verbose: bool = False
 ) -> bool:
     """
     Scrape one game's draw and either POST it to the API or save it as JSON, printing the outcome.
@@ -149,7 +149,7 @@ async def _load_draw(
         if verbose:
             console.log(f"Parsing the {draw.game} html document, id={draw.draw_id}")
         result = await scrape_draw(page, draw.game, draw.draw_id)
-    except Exception as error:  
+    except Exception as error:  # noqa: BLE001 - scrape failures are surfaced and skipped, not propagated.
         error_console.print(f"[bold red][{draw.game}][/] draw {draw.draw_id}: SCRAPE FAILED\n{error}")
         return False
     finally:
@@ -179,7 +179,7 @@ async def _load_draws(draws: list[GameDraw], base_url: str, *, as_json: bool, ve
     if as_json:
         console.log("The script will store the draws on a json file")
         async with PlaywrightClient() as playwright_client:
-            return [await _load_draw(playwright_client, None, draw, verbose) for draw in draws]
+            return [await _load_draw(playwright_client, None, draw, verbose=verbose) for draw in draws]
 
     console.log("The script will store the draws the database using API POST request")
     headers = {"X-Admin-Api-Key": settings.admin_api_key.get_secret_value()}
@@ -187,7 +187,7 @@ async def _load_draws(draws: list[GameDraw], base_url: str, *, as_json: bool, ve
         PlaywrightClient() as playwright_client,
         httpx.AsyncClient(base_url=base_url, headers=headers, timeout=60.0) as http_client,
     ):
-        return [await _load_draw(playwright_client, http_client, draw, verbose) for draw in draws]
+        return [await _load_draw(playwright_client, http_client, draw, verbose=verbose) for draw in draws]
 
 
 def main(argv: list[str] | None = None) -> int:

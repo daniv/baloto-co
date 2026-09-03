@@ -85,12 +85,12 @@ help = "Short description of the schema change."
 heading = "Code Quality"
 
 [tool.poe.groups.quality.tasks.lint]
-help = "Lint application and test code, excluding deferred documentation checks."
-cmd = "ruff check app tests alembic scripts --ignore D100,D101,D102"
+help = "Lint application and test code, including documentation checks."
+cmd = "ruff check app tests alembic scripts"
 
 [tool.poe.groups.quality.tasks.lint-fix]
-help = "Apply safe Ruff fixes, excluding deferred documentation checks."
-cmd = "ruff check app tests alembic scripts --ignore D100,D101,D102 --fix"
+help = "Apply safe Ruff fixes, including documentation checks."
+cmd = "ruff check app tests alembic scripts --fix"
 
 [tool.poe.groups.quality.tasks.lint-fix-all]
 help = "Apply all safe Ruff fixes to application and test code."

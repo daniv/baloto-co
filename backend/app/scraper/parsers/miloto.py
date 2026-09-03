@@ -26,7 +26,6 @@ from app.scraper.parsers.base import (
 )
 from app.scraper.validators import (
     DrawIdValidator,
-    # MetaContentValidator,
     PageTitleValidator,
 )
 from app.shared.math_utils import es_localized_to_int, parse_millions_to_pesos
@@ -86,7 +85,6 @@ class MilotoResultPage(BasePage):
 
         self.validators.register(
             DrawIdValidator(draw_id, self._game_id),
-            # MetaContentValidator(),
             PageTitleValidator(),
         )
 

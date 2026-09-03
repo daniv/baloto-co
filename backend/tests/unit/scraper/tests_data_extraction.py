@@ -11,12 +11,12 @@ validation is covered by the schema test suite and is not exercised here.
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from app.scraper.parsers.baloto import BalotoResultPage
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from app.scraper import ResultPage
+    from app.scraper.parsers.baloto import BalotoResultPage
     from playwright.async_api import Page
 
     from tests.unit.scraper.loaders import GameCaseLoader
@@ -30,6 +30,7 @@ async def shared_missing_data_loader(
     game_name: ValidGames,
     key: str,
 ) -> ResultPage:
+    """Load a game case's fixture HTML into ``page`` and build the corresponding result page object."""
     game_case = game_case_loader.load(
         module_name="tests_pages",
         game_name=game_name,
@@ -101,16 +102,11 @@ async def test_missing_accumulated_raises(
     page: Page,
     result_page_factory: Callable[[Page, int], ResultPage],
 ) -> None:
-    """
-    Verify that a result document without a draw accumulated raises an AssertionError."""
+    """Verify that a result document without a draw accumulated raises an AssertionError."""
     result_page = await shared_missing_data_loader(
         page, result_page_factory, game_case_loader, game_name, "missing_accumulated"
     )
 
-    try:
-        await result_page.get_accumulated_prize()
-    except Exception as e:
-        print(str(e))
     with pytest.raises(AssertionError, match="accumulated prize should contain exactly 1 node"):
         await result_page.get_accumulated_prize()
 
@@ -118,7 +114,7 @@ async def test_missing_accumulated_raises(
 @pytest.mark.only_game("miloto")
 @pytest.mark.asyncio(loop_scope="module")
 @pytest.mark.parametrize(
-    "text, replace",
+    ("text", "replace"),
     [
         pytest.param("ACUMULADO DEL SORTEO", "", id="no_title"),
         pytest.param("$230 MILLONES", "100", id="invalid_format"),
@@ -166,10 +162,9 @@ async def test_missing_sb_result(
     page: Page,
     result_page_factory: Callable[[Page, int], ResultPage],
 ) -> None:
-    """
-    Verify that a result document without a super-balota result raises an AssertionError."""
+    """Verify that a result document without a super-balota result raises an AssertionError."""
     result_page = await shared_missing_data_loader(page, result_page_factory, game_case_loader, game_name, "no_sb")
 
+    result_page = cast("BalotoResultPage", result_page)
     with pytest.raises(AssertionError, match="balota should contain exactly 1 node"):
-        result_page = cast("BalotoResultPage", result_page)
         await result_page.get_balota()

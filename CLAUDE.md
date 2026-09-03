@@ -15,7 +15,7 @@ All commands run from `backend/`, via `uv`.
 - Full check suite incl. docstring lint: `uv run poe check-all` (adds `lint-docs`)
 - Fast pre-flight (no full test run): `uv run poe check-fast` (format-check, lint, pyright, `pytest --collect-only`)
 - Format: `uv run poe format` / check only (no write): `uv run poe format-check`
-- Lint: `uv run poe lint` (ignores missing-docstring rules D100/D101/D102) / autofix: `uv run poe lint-fix` / autofix incl. unsafe fixes: `uv run poe lint-fix-all`
+- Lint: `uv run poe lint` (docstring rules D100/D101/D102 are NOT ignored; pyproject.toml only ignores D104/D400 and a few formatting rules) / autofix: `uv run poe lint-fix` / autofix incl. unsafe fixes: `uv run poe lint-fix-all`
 - Docstring-only lint (D100/D101/D102 — missing module/class/method docstrings): `uv run poe lint-docs`
 - Strict type check: `uv run poe typecheck` (pyright, `typeCheckingMode = "strict"`)
 - Tests: `uv run poe test` / stop-on-first + verbose: `uv run poe test-xvv` / with coverage: `uv run poe testcov`
