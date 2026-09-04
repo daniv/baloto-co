@@ -34,6 +34,8 @@ python_files = ["tests_*.py", "*._tests"]
 python_functions = [ "test_*" ]
 testpaths = [ "tests" ]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 strict = true
 markers = [
     "unit: Unit test marker",
@@ -49,7 +51,7 @@ addopts = [
 pythonpath = [ "." ]
 
 [tool.pytest_env]
-env_files = ["../.env", "../.env.test"]
+env_files = ["../.env"]
 FORCE_COLOR = "1"
 env_files_skip_if_set = true
 
