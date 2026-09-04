@@ -89,3 +89,18 @@ def int_to_localized_es(value: int) -> str:
         decimal_quantization=False,
         group_separator=True,
     )
+
+
+def abbreviate_pesos(value: int) -> str:
+    """
+    Format a peso amount as a compact currency string.
+
+    Rounds down to whole millions and formats with a Spanish group separator,
+    a ``$`` prefix and an ``M`` suffix (e.g. ``120_000_000 -> "$120M"``,
+    ``2_500_000_000 -> "$2.500M"``).
+
+    :param value: The amount in pesos.
+    :return: The abbreviated currency string.
+    """
+    millions = value // 1_000_000
+    return f"${int_to_localized_es(millions)}M"

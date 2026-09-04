@@ -7,7 +7,7 @@ values, output consistency, and invalid input scenarios used by result schemas.
 """
 
 import pytest
-from app.shared.math_utils import numbers_to_hex
+from app.shared.math_utils import abbreviate_pesos, numbers_to_hex
 
 
 @pytest.mark.unit
@@ -102,3 +102,27 @@ def test_numbers_to_hex_invalid_input_raises_error(
     """
     with pytest.raises(ValueError, match=expected_msg):
         numbers_to_hex([n1, n2, n3, n4, n5], size)
+
+
+@pytest.mark.unit
+def test_abbreviate_pesos_millions() -> None:
+    """
+    Verify a whole number of millions formats as a dollar-prefixed M amount.
+
+    ``120_000_000 pesos`` must render as ``"$120M"``.
+    """
+    result = abbreviate_pesos(120_000_000)
+    assert result == "$120M", "Unexpected abbreviate_pesos output."
+
+
+@pytest.mark.unit
+def test_abbreviate_pesos_billions_in_millions() -> None:
+    """
+    Verify billions render as a grouped millions figure with an M suffix.
+
+    ``2_500_000_000 pesos`` is 2500 million and must render as ``"$2.500M"``.
+    """
+    result = abbreviate_pesos(2_500_000_000)
+    assert result == "$2.500M", "Unexpected abbreviate_pesos output."
+
+
