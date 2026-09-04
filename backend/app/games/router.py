@@ -1,5 +1,6 @@
 """Per-game HTTP routes: read, scrape-and-save, update, and delete one draw."""
 
+from datetime import date
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -90,10 +91,17 @@ async def _replace_draw(session: AsyncSession, game: Game, draw_id: int, body: G
 async def list_miloto_draws_route(
     session: Annotated[AsyncSession, Depends(get_session)],
     page: Annotated[int, Query(ge=1)] = 1,
-    size: Annotated[int, Query(ge=1, le=20)] = 20,
+    size: Annotated[int, Query(ge=1, le=20)] = 10,
+    game_date: Annotated[date | None, Query()] = None,
 ) -> PaginatedResponse[MilotoDrawListItem]:
-    """List Miloto draws for a data table, newest first, max 20 per page."""
-    return await repository.list_miloto_draws(session, page=page, size=size)
+    """List Miloto draws for a data table, newest first, max 20 per page. Optionally filtered to a single date."""
+    return await repository.list_miloto_draws(session, page=page, size=size, game_date=game_date)
+
+
+@miloto_router.get("/draws/dates", response_model=list[date])
+async def list_miloto_draw_dates_route(session: Annotated[AsyncSession, Depends(get_session)]) -> list[date]:
+    """List every date a Miloto draw was held, for restricting a date-picker to valid draw dates."""
+    return await repository.list_miloto_draw_dates(session)
 
 
 @miloto_router.get("/draw/{draw_id}")

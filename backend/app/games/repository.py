@@ -1,5 +1,6 @@
 """Persist validated game-draw schemas as SQLAlchemy ORM rows."""
 
+from datetime import date
 from typing import TYPE_CHECKING
 
 from sqlalchemy import func, insert, select
@@ -235,7 +236,9 @@ async def delete_draw(session: AsyncSession, game: Game, draw_id: int) -> bool:
     return True
 
 
-async def list_miloto_draws(session: AsyncSession, page: int, size: int) -> PaginatedResponse[MilotoDrawListItem]:
+async def list_miloto_draws(
+    session: AsyncSession, page: int, size: int, game_date: date | None = None
+) -> PaginatedResponse[MilotoDrawListItem]:
     """
     Fetch a page of Miloto draws for a frontend data table, newest first.
 
@@ -246,13 +249,26 @@ async def list_miloto_draws(session: AsyncSession, page: int, size: int) -> Pagi
     :param session: Active session used to run the queries.
     :param page: 1-indexed page number (>= 1).
     :param size: Number of items per page (1..20).
+    :param game_date: When given, restrict the result to the single draw held on this date.
     :return: A paginated envelope of table rows.
     """
     model = MilotoDraw
-    total = (await session.execute(select(func.count()).select_from(model))).scalar_one()
+    count_stmt = select(func.count()).select_from(model)
+    query_stmt = select(model).order_by(model.game_id.desc())
 
-    result = await session.execute(select(model).order_by(model.game_id.desc()).offset((page - 1) * size).limit(size))
+    if game_date is not None:
+        count_stmt = count_stmt.where(model.game_date == game_date)
+        query_stmt = query_stmt.where(model.game_date == game_date)
+
+    total = (await session.execute(count_stmt)).scalar_one()
+    result = await session.execute(query_stmt.offset((page - 1) * size).limit(size))
     items = [_to_list_item(row) for row in result.scalars()]
 
     pages = 0 if total == 0 else (total + size - 1) // size
     return PaginatedResponse[MilotoDrawListItem](items=items, page=page, size=size, total=total, pages=pages)
+
+
+async def list_miloto_draw_dates(session: AsyncSession) -> list[date]:
+    """Return every calendar date a Miloto draw is stored for, ascending — used to restrict a date picker."""
+    result = await session.execute(select(MilotoDraw.game_date).order_by(MilotoDraw.game_date))
+    return list(result.scalars())
