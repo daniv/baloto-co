@@ -2,22 +2,24 @@
 
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.core.security import require_admin_api_key
 from app.games import repository
+from app.games.pagination import PaginatedResponse
 
 # The schema classes must stay real (not TYPE_CHECKING-only) runtime imports:
 # FastAPI resolves request-body (``body: MilotoSchema``) and return annotations
 # at runtime to build the per-game routes, same constraint as app.games.models.
 from app.games.schemas import (
-    BalotoSchema,  # noqa: TC001 - FastAPI needs this at runtime for body/return annotations.
-    GameSchema,  # noqa: TC001 - FastAPI needs this at runtime for body/return annotations.
-    MilotoSchema,  # noqa: TC001 - FastAPI needs this at runtime for body/return annotations.
-    RevanchaSchema,  # noqa: TC001 - FastAPI needs this at runtime for body/return annotations.
+    BalotoSchema,
+    GameSchema,
+    MilotoDrawListItem,
+    MilotoSchema,
+    RevanchaSchema,
 )
 
 if TYPE_CHECKING:
@@ -52,7 +54,7 @@ async def _create_draw(session: AsyncSession, game: Game, draw_id: int, body: Ga
         await repository.create_draw(session, body)
     except IntegrityError:
         error_message = f"Draw {draw_id} already exists, or its date collides with another {game} draw."
-        raise HTTPException(status_code=status.HTTP_400_CONFLICT, detail=error_message) from None
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=error_message) from None
 
     return body
 
@@ -82,6 +84,16 @@ async def _replace_draw(session: AsyncSession, game: Game, draw_id: int, body: G
 # ===============================================================================================================
 # Miloto
 # ===============================================================================================================
+
+
+@miloto_router.get("/draws", response_model=PaginatedResponse[MilotoDrawListItem])
+async def list_miloto_draws_route(
+    session: Annotated[AsyncSession, Depends(get_session)],
+    page: Annotated[int, Query(ge=1)] = 1,
+    size: Annotated[int, Query(ge=1, le=20)] = 20,
+) -> PaginatedResponse[MilotoDrawListItem]:
+    """List Miloto draws for a data table, newest first, max 20 per page."""
+    return await repository.list_miloto_draws(session, page=page, size=size)
 
 
 @miloto_router.get("/draw/{draw_id}")
