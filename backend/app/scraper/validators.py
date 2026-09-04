@@ -228,36 +228,6 @@ class DrawIdValidator:
         ).to_have_text(expected_text)
 
 
-class MetaContentValidator:
-    """
-    Validate the Miloto identity declared by page metadata.
-
-    This validator targets the description meta element used by Miloto result
-    pages and verifies its exact game-identifying content.
-    """
-
-    @property
-    def name(self) -> str:
-        """Return the stable metadata-validator name."""
-        return "meta content"
-
-    async def validate(self, page: Page) -> None:
-        """
-        Verify that the page metadata identifies Miloto.
-
-        :param page: Loaded Playwright page to validate.
-        :raises AssertionError: If the description metadata does not contain ``Miloto``.
-        """
-        description = page.locator(
-            'meta[name="description"]',
-        ).describe("Miloto meta description tag")
-
-        await expect(
-            description,
-            "Loaded page metadata should identify the Miloto game",
-        ).to_have_attribute("content", "Miloto")
-
-
 class PageTitleValidator:
     """
     Validate the Miloto identity declared by the document title.

@@ -14,7 +14,6 @@ from app.scraper.validators import (
     BalotoImageValidator,
     DrawIdValidator,
     DuplicateValidatorError,
-    MetaContentValidator,
     PageTitleValidator,
     RevanchaImageValidator,
     ValidatorNotRegisteredError,
@@ -44,37 +43,6 @@ async def test_page_title_validator(page: Page) -> None:
         await validator.validate(page)
 
     assert "Loaded page title should identify the Miloto game" in str(exc_info.value)
-
-
-@pytest.mark.asyncio(loop_scope="module")
-async def test_meta_content_validator(page: Page) -> None:
-    """
-    Verify that the MiLoto metadata validator rejects an unexpected description.
-
-    The test loads a local document containing the expected metadata element
-    with an invalid ``content`` value. It executes the validator directly so
-    the failure remains isolated from URL, title, and draw identifier validation.
-    """
-    await page.set_content(
-        """
-        <!DOCTYPE html>
-        <html>
-            <head>
-                <meta name="description" content="Baloto">
-            </head>
-            <body></body>
-        </html>
-        """,
-        wait_until="domcontentloaded",
-    )
-    validator = MetaContentValidator()
-
-    with pytest.raises(AssertionError) as exc_info:
-        await validator.validate(page)
-
-    error_message = str(exc_info.value)
-    assert "Loaded page metadata should identify" in error_message
-    assert "Actual value: Baloto" in error_message
 
 
 @pytest.mark.asyncio(loop_scope="module")
