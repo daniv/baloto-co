@@ -247,3 +247,15 @@ class RevanchaSchema(BalotoSchema):
     def result_url(self) -> str:
         """URL of the official Revancha results page."""
         return str(settings.revancha.result_url)
+
+
+class MilotoDrawListItem(BaseModel):
+    """A lightweight Miloto draw row for a frontend data table."""
+
+    model_config = ConfigDict(frozen=True)
+
+    game_id: int
+    game_date: str
+    numbers: list[int]
+    accumulated: str
+    jackpot: bool
