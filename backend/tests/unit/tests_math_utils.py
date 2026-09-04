@@ -124,5 +124,3 @@ def test_abbreviate_pesos_billions_in_millions() -> None:
     """
     result = abbreviate_pesos(2_500_000_000)
     assert result == "$2.500M", "Unexpected abbreviate_pesos output."
-
-
