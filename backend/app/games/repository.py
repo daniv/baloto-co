@@ -2,18 +2,22 @@
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import insert
+from sqlalchemy import func, insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.games.models import BalotoDraw, MilotoDraw, RevanchaDraw
+from app.games.pagination import PaginatedResponse
 from app.games.schemas import (
     BalotoSchema,
     Game,
     GameSchema,
+    MilotoDrawListItem,
     MilotoSchema,
     ResultDetails,
     RevanchaSchema,
 )
+from app.shared.date_utils import full_date
+from app.shared.math_utils import abbreviate_pesos
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +30,17 @@ _MODEL_BY_GAME: dict[Game, DrawModel] = {
     "baloto": BalotoDraw,
     "revancha": RevanchaDraw,
 }
+
+
+def _to_list_item(row: MilotoDraw) -> MilotoDrawListItem:
+    """Map one ``miloto_draws`` row to the lightweight table projection."""
+    return MilotoDrawListItem(
+        game_id=row.game_id,
+        game_date=full_date(row.game_date),
+        numbers=row.numbers,
+        accumulated=abbreviate_pesos(row.accumulated),
+        jackpot=row.hits_5 is not None,
+    )
 
 
 def _hits_payload(details: ResultDetails | None) -> dict[str, int] | None:
@@ -218,3 +233,26 @@ async def delete_draw(session: AsyncSession, game: Game, draw_id: int) -> bool:
 
     await session.delete(row)
     return True
+
+
+async def list_miloto_draws(session: AsyncSession, page: int, size: int) -> PaginatedResponse[MilotoDrawListItem]:
+    """
+    Fetch a page of Miloto draws for a frontend data table, newest first.
+
+    Returns a lightweight projection (``MilotoDrawListItem``) of at most
+    ``size`` rows ordered by ``game_id`` descending. When ``total`` is zero
+    the ``pages`` count is 0.
+
+    :param session: Active session used to run the queries.
+    :param page: 1-indexed page number (>= 1).
+    :param size: Number of items per page (1..20).
+    :return: A paginated envelope of table rows.
+    """
+    model = MilotoDraw
+    total = (await session.execute(select(func.count()).select_from(model))).scalar_one()
+
+    result = await session.execute(select(model).order_by(model.game_id.desc()).offset((page - 1) * size).limit(size))
+    items = [_to_list_item(row) for row in result.scalars()]
+
+    pages = 0 if total == 0 else (total + size - 1) // size
+    return PaginatedResponse[MilotoDrawListItem](items=items, page=page, size=size, total=total, pages=pages)
