@@ -140,7 +140,9 @@ onMounted(async () => {
     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
+          <thead
+            class="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
+          >
             <tr>
               <th scope="col" class="px-4 py-3 font-medium">Sorteo</th>
               <th scope="col" class="px-4 py-3 font-medium">Fecha</th>
@@ -163,11 +165,7 @@ onMounted(async () => {
               </td>
             </tr>
             <template v-else>
-              <tr
-                v-for="draw in result.items"
-                :key="draw.game_id"
-                class="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-              >
+              <tr v-for="draw in result.items" :key="draw.game_id" class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                 <td class="px-4 py-3 font-medium tabular-nums text-slate-900 dark:text-white">
                   {{ draw.game_id }}
                 </td>

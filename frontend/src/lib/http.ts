@@ -10,6 +10,13 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Fetch JSON from the backend API, throwing {@link ApiError} on a non-2xx response.
+ *
+ * @param path - API path relative to the base URL, e.g. "/miloto/draws".
+ * @param params - Query string parameters to append.
+ * @returns The parsed JSON response body.
+ */
 export async function apiGet<T>(path: string, params?: Record<string, string | number>): Promise<T> {
   const url = new URL(`${API_BASE_URL}${path}`, window.location.origin)
   for (const [key, value] of Object.entries(params ?? {})) {

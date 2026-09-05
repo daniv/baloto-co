@@ -17,7 +17,9 @@ function rangeLabel(): string {
 </script>
 
 <template>
-  <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row dark:border-slate-800">
+  <div
+    class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row dark:border-slate-800"
+  >
     <p class="text-sm text-slate-500 dark:text-slate-400">{{ rangeLabel() }}</p>
 
     <div class="flex items-center gap-2">

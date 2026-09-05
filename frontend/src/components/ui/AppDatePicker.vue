@@ -124,7 +124,14 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
       class="flex w-56 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
       @click="open = !open"
     >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" class="h-4 w-4 shrink-0 text-slate-400">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.75"
+        class="h-4 w-4 shrink-0 text-slate-400"
+      >
         <rect x="3.5" y="5" width="17" height="16" rx="2" />
         <path stroke-linecap="round" d="M8 3v4M16 3v4M3.5 10h17" />
       </svg>

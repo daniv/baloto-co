@@ -8,14 +8,8 @@ import { navItems } from './navItems'
     class="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex dark:border-slate-800 dark:bg-slate-900"
   >
     <div class="flex h-16 items-center gap-2 px-6">
-      <div
-        class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white"
-      >
-        B
-      </div>
-      <span class="text-base font-semibold tracking-tight text-slate-900 dark:text-white">
-        Baloto&nbsp;Co
-      </span>
+      <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">B</div>
+      <span class="text-base font-semibold tracking-tight text-slate-900 dark:text-white"> Baloto&nbsp;Co </span>
     </div>
 
     <nav class="flex-1 space-y-1 px-3 py-4">
