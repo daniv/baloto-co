@@ -91,7 +91,7 @@ async def _replace_draw(session: AsyncSession, game: Game, draw_id: int, body: G
 async def list_miloto_draws_route(
     session: Annotated[AsyncSession, Depends(get_session)],
     page: Annotated[int, Query(ge=1)] = 1,
-    size: Annotated[int, Query(ge=1, le=20)] = 10,
+    size: Annotated[int, Query(ge=1, le=50)] = 10,
     game_date: Annotated[date | None, Query()] = None,
     jackpot: Annotated[bool | None, Query()] = None,
 ) -> PaginatedResponse[MilotoDrawListItem]:

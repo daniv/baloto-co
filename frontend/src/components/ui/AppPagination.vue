@@ -4,9 +4,10 @@ const props = defineProps<{
   pages: number
   total: number
   size: number
+  pageSizeOptions?: number[]
 }>()
 
-const emit = defineEmits<{ first: []; previous: []; next: []; last: [] }>()
+const emit = defineEmits<{ first: []; previous: []; next: []; last: []; 'update:size': [number] }>()
 
 function rangeLabel(): string {
   if (props.total === 0) return 'Sin resultados'
@@ -20,7 +21,19 @@ function rangeLabel(): string {
   <div
     class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 sm:flex-row dark:border-slate-800"
   >
-    <p class="text-sm text-slate-500 dark:text-slate-400">{{ rangeLabel() }}</p>
+    <div class="flex items-center gap-3">
+      <p class="text-sm text-slate-500 dark:text-slate-400">{{ rangeLabel() }}</p>
+      <label v-if="pageSizeOptions" class="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+        Mostrar
+        <select
+          :value="size"
+          class="rounded-md border border-slate-300 bg-white px-1.5 py-1 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          @change="emit('update:size', Number(($event.target as HTMLSelectElement).value))"
+        >
+          <option v-for="opt in pageSizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+        </select>
+      </label>
+    </div>
 
     <div class="flex items-center gap-2">
       <button

@@ -16,9 +16,15 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const allowedDates = ref<string[]>([])
 
+const sizeOptions = [5, 10, 20, 30, 50]
+
 const pageFromQuery = computed(() => {
   const parsed = Number(route.query.page)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1
+})
+const sizeFromQuery = computed(() => {
+  const parsed = Number(route.query.size)
+  return sizeOptions.includes(parsed) ? parsed : 10
 })
 const dateFromQuery = computed(() => (typeof route.query.date === 'string' ? route.query.date : null))
 
@@ -44,7 +50,12 @@ async function fetchDraws() {
   loading.value = true
   error.value = null
   try {
-    result.value = await getMilotoDraws(pageFromQuery.value, 10, dateFromQuery.value, jackpotFromQuery.value)
+    result.value = await getMilotoDraws(
+      pageFromQuery.value,
+      sizeFromQuery.value,
+      dateFromQuery.value,
+      jackpotFromQuery.value,
+    )
   } catch {
     error.value = 'No se pudieron cargar los resultados de Miloto. Intenta de nuevo.'
   } finally {
@@ -53,7 +64,14 @@ async function fetchDraws() {
 }
 
 function goToPage(page: number) {
-  const query: Record<string, string> = { page: String(page) }
+  const query: Record<string, string> = { page: String(page), size: String(sizeFromQuery.value) }
+  if (dateFromQuery.value) query.date = dateFromQuery.value
+  if (jackpotFromQuery.value != null) query.jackpot = String(jackpotFromQuery.value)
+  router.push({ query })
+}
+
+function changeSize(size: number) {
+  const query: Record<string, string> = { page: '1', size: String(size) }
   if (dateFromQuery.value) query.date = dateFromQuery.value
   if (jackpotFromQuery.value != null) query.jackpot = String(jackpotFromQuery.value)
   router.push({ query })
@@ -71,7 +89,7 @@ function clearSearch() {
   router.push({ query: {} })
 }
 
-watch([pageFromQuery, dateFromQuery, jackpotFromQuery], fetchDraws, { immediate: true })
+watch([pageFromQuery, sizeFromQuery, dateFromQuery, jackpotFromQuery], fetchDraws, { immediate: true })
 
 onMounted(async () => {
   try {
@@ -214,10 +232,12 @@ onMounted(async () => {
         :pages="result.pages"
         :total="result.total"
         :size="result.size"
+        :page-size-options="activeTab === 'cayeron' ? sizeOptions : undefined"
         @first="goToPage(1)"
         @previous="goToPage(pageFromQuery - 1)"
         @next="goToPage(pageFromQuery + 1)"
         @last="goToPage(result.pages)"
+        @update:size="changeSize"
       />
     </div>
   </div>

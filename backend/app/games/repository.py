@@ -253,7 +253,7 @@ async def list_miloto_draws(
 
     :param session: Active session used to run the queries.
     :param page: 1-indexed page number (>= 1).
-    :param size: Number of items per page (1..20).
+    :param size: Number of items per page (1..50).
     :param game_date: When given, restrict the result to the single draw held on this date.
     :param jackpot: When ``True``, only rows where the jackpot was hit (``hits_5`` holds actual
                     payout data). When ``False``, only rows where the jackpot was not hit.
