@@ -237,7 +237,12 @@ async def delete_draw(session: AsyncSession, game: Game, draw_id: int) -> bool:
 
 
 async def list_miloto_draws(
-    session: AsyncSession, page: int, size: int, game_date: date | None = None
+    session: AsyncSession,
+    page: int,
+    size: int,
+    game_date: date | None = None,
+    *,
+    jackpot: bool | None = None,
 ) -> PaginatedResponse[MilotoDrawListItem]:
     """
     Fetch a page of Miloto draws for a frontend data table, newest first.
@@ -250,6 +255,11 @@ async def list_miloto_draws(
     :param page: 1-indexed page number (>= 1).
     :param size: Number of items per page (1..20).
     :param game_date: When given, restrict the result to the single draw held on this date.
+    :param jackpot: When ``True``, only rows where the jackpot was hit (``hits_5`` holds actual
+                    payout data). When ``False``, only rows where the jackpot was not hit.
+                    ``hits_5`` is a JSONB column, so jackpot-hit rows are those whose JSON value
+                    is not the JSON literal ``null`` (checked via ``jsonb_typeof``), not rows that
+                    are SQL ``NULL``.
     :return: A paginated envelope of table rows.
     """
     model = MilotoDraw
@@ -259,6 +269,13 @@ async def list_miloto_draws(
     if game_date is not None:
         count_stmt = count_stmt.where(model.game_date == game_date)
         query_stmt = query_stmt.where(model.game_date == game_date)
+
+    if jackpot is True:
+        count_stmt = count_stmt.where(func.jsonb_typeof(model.hits_5) != "null")
+        query_stmt = query_stmt.where(func.jsonb_typeof(model.hits_5) != "null")
+    elif jackpot is False:
+        count_stmt = count_stmt.where(func.jsonb_typeof(model.hits_5) == "null")
+        query_stmt = query_stmt.where(func.jsonb_typeof(model.hits_5) == "null")
 
     total = (await session.execute(count_stmt)).scalar_one()
     result = await session.execute(query_stmt.offset((page - 1) * size).limit(size))

@@ -27,12 +27,12 @@ const viewDate = ref(monthFrom(props.modelValue ?? latestAllowed.value ?? toIso(
 
 watch(
   () => props.modelValue,
-  (value) => {
+  (value: string | null) => {
     if (value) viewDate.value = monthFrom(value)
   },
 )
 
-watch(latestAllowed, (value) => {
+watch(latestAllowed, (value: string | null) => {
   if (!props.modelValue && value) viewDate.value = monthFrom(value)
 })
 
@@ -79,6 +79,25 @@ function nextMonth() {
   viewDate.value = new Date(viewDate.value.getFullYear(), viewDate.value.getMonth() + 1, 1)
 }
 
+const showYearPicker = ref(false)
+
+const availableYears = computed(() => {
+  if (props.allowedDates.length === 0) return []
+  const years = new Set(props.allowedDates.map((d: string) => isoParts(d)[0]))
+  return [...years].sort((a, b) => a - b)
+})
+
+const yearRangeLabel = computed(() => {
+  if (availableYears.value.length === 0) return ''
+  const [min, max] = [availableYears.value[0], availableYears.value.at(-1)!]
+  return min === max ? `${min}` : `${min} – ${max}`
+})
+
+function selectYear(year: number) {
+  viewDate.value = new Date(year, viewDate.value.getMonth(), 1)
+  showYearPicker.value = false
+}
+
 const displayLabel = computed(() => {
   if (!props.modelValue) return 'Selecciona una fecha'
   const [y, m, d] = isoParts(props.modelValue)
@@ -116,46 +135,82 @@ onBeforeUnmount(() => document.removeEventListener('click', handleOutsideClick))
       v-if="open"
       class="absolute z-20 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-900"
     >
-      <div class="mb-2 flex items-center justify-between">
-        <button
-          type="button"
-          class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-          aria-label="Mes anterior"
-          @click="previousMonth"
-        >
-          ‹
-        </button>
-        <span class="text-sm font-medium text-slate-900 dark:text-white">{{ monthLabel }}</span>
-        <button
-          type="button"
-          class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-          aria-label="Mes siguiente"
-          @click="nextMonth"
-        >
-          ›
-        </button>
-      </div>
+      <template v-if="!showYearPicker">
+        <div class="mb-2 flex items-center justify-between">
+          <button
+            type="button"
+            class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            aria-label="Mes anterior"
+            @click="previousMonth"
+          >
+            ‹
+          </button>
+          <span class="text-sm font-medium text-slate-900 dark:text-white">
+            {{ monthLabel.split(' ')[0] }}
+            <button
+              type="button"
+              class="ml-1 rounded px-1 text-slate-400 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-white"
+              @click="showYearPicker = true"
+            >
+              {{ viewDate.getFullYear() }}
+            </button>
+          </span>
+          <button
+            type="button"
+            class="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            aria-label="Mes siguiente"
+            @click="nextMonth"
+          >
+            ›
+          </button>
+        </div>
 
-      <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 dark:text-slate-500">
-        <span v-for="label in ['L', 'M', 'M', 'J', 'V', 'S', 'D']" :key="label">{{ label }}</span>
-      </div>
+        <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 dark:text-slate-500">
+          <span v-for="label in ['L', 'M', 'M', 'J', 'V', 'S', 'D']" :key="label">{{ label }}</span>
+        </div>
 
-      <div v-for="(week, wi) in weeks" :key="wi" class="grid grid-cols-7 gap-1">
-        <button
-          v-for="(day, di) in week"
-          :key="di"
-          type="button"
-          class="flex h-8 w-8 items-center justify-center rounded-full text-sm text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-200 dark:disabled:text-slate-700"
-          :class="{
-            'hover:bg-slate-100 dark:hover:bg-slate-800': isAllowed(day) && !isSelected(day),
-            'bg-brand-600 text-white hover:bg-brand-600': isSelected(day),
-          }"
-          :disabled="!isAllowed(day)"
-          @click="selectDay(day)"
-        >
-          {{ day?.getDate() ?? '' }}
-        </button>
-      </div>
+        <div v-for="(week, wi) in weeks" :key="wi" class="grid grid-cols-7 gap-1">
+          <button
+            v-for="(day, di) in week"
+            :key="di"
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-full text-sm text-slate-700 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-200 dark:disabled:text-slate-700"
+            :class="{
+              'hover:bg-slate-100 dark:hover:bg-slate-800': isAllowed(day) && !isSelected(day),
+              'bg-brand-600 text-white hover:bg-brand-600': isSelected(day),
+            }"
+            :disabled="!isAllowed(day)"
+            @click="selectDay(day)"
+          >
+            {{ day?.getDate() ?? '' }}
+          </button>
+        </div>
+      </template>
+
+      <template v-else>
+        <div class="mb-2 flex items-center justify-between">
+          <span class="text-sm font-medium text-slate-900 dark:text-white">{{ yearRangeLabel }}</span>
+          <button
+            type="button"
+            class="rounded-md p-1 text-xs text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+            @click="showYearPicker = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="grid max-h-48 grid-cols-3 gap-1 overflow-y-auto">
+          <button
+            v-for="year in availableYears"
+            :key="year"
+            type="button"
+            class="rounded-lg px-2 py-1.5 text-center text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            :class="{ 'bg-brand-600 text-white hover:bg-brand-600': year === viewDate.getFullYear() }"
+            @click="selectYear(year)"
+          >
+            {{ year }}
+          </button>
+        </div>
+      </template>
     </div>
   </div>
 </template>

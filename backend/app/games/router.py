@@ -93,9 +93,14 @@ async def list_miloto_draws_route(
     page: Annotated[int, Query(ge=1)] = 1,
     size: Annotated[int, Query(ge=1, le=20)] = 10,
     game_date: Annotated[date | None, Query()] = None,
+    jackpot: Annotated[bool | None, Query()] = None,
 ) -> PaginatedResponse[MilotoDrawListItem]:
-    """List Miloto draws for a data table, newest first, max 20 per page. Optionally filtered to a single date."""
-    return await repository.list_miloto_draws(session, page=page, size=size, game_date=game_date)
+    """
+    List Miloto draws for a data table, newest first, max 20 per page.
+
+    Optionally filtered to a single date or jackpot status.
+    """
+    return await repository.list_miloto_draws(session, page=page, size=size, game_date=game_date, jackpot=jackpot)
 
 
 @miloto_router.get("/draws/dates", response_model=list[date])

@@ -23,13 +23,28 @@ const pageFromQuery = computed(() => {
 const dateFromQuery = computed(() => (typeof route.query.date === 'string' ? route.query.date : null))
 
 const searchDate = ref<string | null>(dateFromQuery.value)
-watch(dateFromQuery, (value) => (searchDate.value = value))
+watch(dateFromQuery, (value: string | null) => (searchDate.value = value))
+
+const jackpotFromQuery = computed((): boolean | null => {
+  if (route.query.jackpot === 'true') return true
+  if (route.query.jackpot === 'false') return false
+  return null
+})
+
+const activeTab = computed<'todos' | 'cayeron'>(() => (jackpotFromQuery.value === true ? 'cayeron' : 'todos'))
+
+function activateTab(tab: 'todos' | 'cayeron') {
+  const query: Record<string, string> = { page: '1' }
+  if (tab === 'todos' && dateFromQuery.value) query.date = dateFromQuery.value
+  if (tab === 'cayeron') query.jackpot = 'true'
+  router.push({ query })
+}
 
 async function fetchDraws() {
   loading.value = true
   error.value = null
   try {
-    result.value = await getMilotoDraws(pageFromQuery.value, 10, dateFromQuery.value)
+    result.value = await getMilotoDraws(pageFromQuery.value, 10, dateFromQuery.value, jackpotFromQuery.value)
   } catch {
     error.value = 'No se pudieron cargar los resultados de Miloto. Intenta de nuevo.'
   } finally {
@@ -40,12 +55,14 @@ async function fetchDraws() {
 function goToPage(page: number) {
   const query: Record<string, string> = { page: String(page) }
   if (dateFromQuery.value) query.date = dateFromQuery.value
+  if (jackpotFromQuery.value != null) query.jackpot = String(jackpotFromQuery.value)
   router.push({ query })
 }
 
 function applySearch() {
   const query: Record<string, string> = { page: '1' }
   if (searchDate.value) query.date = searchDate.value
+  if (jackpotFromQuery.value != null) query.jackpot = String(jackpotFromQuery.value)
   router.push({ query })
 }
 
@@ -54,7 +71,7 @@ function clearSearch() {
   router.push({ query: {} })
 }
 
-watch([pageFromQuery, dateFromQuery], fetchDraws, { immediate: true })
+watch([pageFromQuery, dateFromQuery, jackpotFromQuery], fetchDraws, { immediate: true })
 
 onMounted(async () => {
   try {
@@ -72,7 +89,34 @@ onMounted(async () => {
       <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Historial de sorteos, más reciente primero.</p>
     </div>
 
-    <div class="mb-4 flex flex-wrap items-end gap-3">
+    <div class="mb-4 flex gap-1 border-b border-slate-200 dark:border-slate-800">
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2 text-sm font-medium transition-colors"
+        :class="
+          activeTab === 'todos'
+            ? 'border-brand-600 text-brand-600 dark:text-brand-400'
+            : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+        "
+        @click="activateTab('todos')"
+      >
+        Todos
+      </button>
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2 text-sm font-medium transition-colors"
+        :class="
+          activeTab === 'cayeron'
+            ? 'border-brand-600 text-brand-600 dark:text-brand-400'
+            : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+        "
+        @click="activateTab('cayeron')"
+      >
+        Cayeron
+      </button>
+    </div>
+
+    <div v-if="activeTab === 'todos'" class="mb-4 flex flex-wrap items-end gap-3">
       <div>
         <label class="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Fecha del sorteo</label>
         <AppDatePicker v-model="searchDate" :allowed-dates="allowedDates" />

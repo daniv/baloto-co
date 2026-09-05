@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-`baloto-co` is a Python backend for tracking Colombian lottery draws (Baloto, Revancha, Miloto): scraping and validating draw results (numbers, prizes, jackpots) against typed schemas, persisting them in Postgres, and exposing them over a FastAPI HTTP API. The repo currently contains only `backend/`; there is no frontend yet. Scraping is implemented in `app/scraper/` as async Playwright page objects for the `baloto.com` results pages (see Architecture below). `app/main.py` wires up a real FastAPI app: per-game routers under `app/games/router.py` expose `GET`/`POST`/`PATCH`/`DELETE` on `/{game}/draw/{draw_id}` for `miloto`, `baloto`, and `revancha`. Reads hit Postgres directly; writes (`POST`/`PATCH`/`DELETE`) trigger a real Playwright navigation of the live results page and are gated behind a shared admin API key.
+`baloto-co` is a full-stack app for tracking Colombian lottery draws (Baloto, Revancha, Miloto): a Python backend that scrapes and validates draw results (numbers, prizes, jackpots) against typed schemas, persists them in Postgres, and exposes them over a FastAPI HTTP API; plus a Vue 3 SPA frontend that displays draw results with search, pagination, and dark mode. Scraping is implemented in `app/scraper/` as async Playwright page objects for the `baloto.com` results pages (see Architecture below). `app/main.py` wires up a real FastAPI app: per-game routers under `app/games/router.py` expose `GET`/`POST`/`PATCH`/`DELETE` on `/{game}/draw/{draw_id}` for `miloto`, `baloto`, and `revancha`. Reads hit Postgres directly; writes (`POST`/`PATCH`/`DELETE`) trigger a real Playwright navigation of the live results page and are gated behind a shared admin API key.
 
 ## Commands
 
@@ -45,6 +45,16 @@ Notes:
 - No `--reload` in `poe serve`: on Windows, `uvicorn`'s reload supervisor (and `fastapi dev`, which enables reload by default) forces `asyncio.WindowsSelectorEventLoopPolicy`. `PlaywrightClient` needs `asyncio.create_subprocess_exec` to launch the browser, which only `WindowsProactorEventLoopPolicy` supports — under the reload supervisor, app startup fails with `NotImplementedError` from `asyncio/base_events.py`. Plain `uvicorn app.main:app` (no reload) uses the default Proactor policy and starts fine; restart the process manually after code changes instead.
 - Local Postgres: `docker-compose.yml` (repo root) runs a single Postgres container, reading `POSTGRES_USER`/`POSTGRES_PASSWORD`/`POSTGRES_DB`/port from the repo-root `.env` (`DB_USER`/`DB_PASSWORD`/`DB_NAME`/`DB_PORT` — same variables `app/core/config.py` reads). `docker compose up -d` creates and starts it with no manual `CREATE DATABASE` step; data persists in the `postgres_data` named volume across restarts. The app itself still runs on the host (not containerized), connecting to the container over the mapped port — `DB_HOST` stays `localhost`. Run `uv run poe db-upgrade` after the container is up to apply the schema.
 
+## Frontend commands
+
+All commands run from `frontend/`.
+
+- Install deps: `npm install`
+- Dev server: `npm run dev` (Vite, proxies `/api` to `http://localhost:8000` — the backend's `/` prefix is stripped so the frontend calls e.g. `/api/miloto/draws` which the proxy rewrites to `/miloto/draws`)
+- Type-check: `npx vue-tsc -b`
+- Production build: `npm run build` (runs `vue-tsc -b && vite build`)
+- Preview production build: `npm run preview`
+
 ## Architecture
 
 - **`app/core/config.py`** — one settings singleton, `settings = BackendSettings()` (pydantic-settings), loaded from `../.env` (relative to `backend/`) then the `pyproject.toml` `[project]` table, case-insensitive. Per-game constants live in nested frozen sub-settings: `settings.miloto`, `settings.baloto`, `settings.revancha` (each a `MilotoSettings`/`BalotoSettings`/`RevanchaSettings`) — first draw id/date, number range (`max_value`, `max_super_balota` for Baloto/Revancha), minimum jackpot/hit prizes, draw weekdays, and the results URL. `RevanchaSettings` extends `BalotoSettings` since Revancha is drawn from the same balls as Baloto — it only overrides the prize floor and URL.
@@ -68,3 +78,21 @@ Notes:
 - **`app/shared/`** — game-agnostic helpers: `date_utils.py` (Spanish date parsing/formatting via `dateparser`/`babel`), `math_utils.py` (`numbers_to_hex` bitmap encoding of drawn numbers; `es_localized_to_int`/`int_to_localized_es`/`parse_millions_to_pesos` for Spanish-locale integer parsing/formatting, used throughout the scraper to read displayed prize/id text), `console.py` (shared `rich` `Console`/`error_console` singletons for terminal output).
 - **Testing** (`backend/tests/`) — `tests/unit/` holds plain unit tests; `tests/unit/scraper/` drives real headless Chromium against local HTML fixtures (`tests/resources/html/*.html`) and expected-value JSON (`tests/resources/ex_results/<test_module>/<game>.json`), loaded through `GameCaseLoader`/`GameTestCase` (`tests/unit/scraper/loaders.py`/`model.py`). Cross-game parametrization uses custom markers `crossgames`/`only_game(name)`/`skip_game(name)` and a `--game {miloto,baloto,revancha}` CLI flag, defined in `tests/conftest.py` and `tests/unit/scraper/conftest.py`. See the Commands notes above — this suite doesn't currently collect/pass cleanly.
 - Adding a new game follows the existing pattern: a `*Settings` class in `config.py` (nested under `BackendSettings`) plus a `*Schema` class in `schemas.py` wired into the `GameSchema` union with its own unique `game` discriminator value, and — if the game needs live scraping — a page object in `app/scraper/parsers/` implementing the `ResultPage` protocol plus any game-specific validators.
+- **Frontend** (`frontend/`) — Vue 3 SPA built with Vite, TypeScript, Tailwind CSS v4, Pinia, and Vue Router:
+  - **`src/main.ts`** — app entry: creates the Vue app, installs Pinia and the router, mounts to `#app`.
+  - **`src/App.vue`** — root layout: sidebar + topbar + `<RouterView />` content area. Owns a mobile nav drawer (toggled by topbar hamburger).
+  - **`src/router/index.ts`** — four routes: `/` (HomeView), `/miloto` (MilotoView), `/miloto/draw/:id` (MilotoDrawDetailView), `/baloto-revancha` (BalotoRevanchaView). Routes carry `meta.breadcrumb` and optional `meta.parent` for the breadcrumb trail.
+  - **`src/lib/http.ts`** — thin `apiGet<T>(path, params?)` wrapper around `fetch`; base URL defaults to `/api` (overridable via `VITE_API_BASE_URL`). Throws `ApiError` (with HTTP status) on non-2xx responses.
+  - **`src/api/miloto.ts`** — Miloto-specific API calls: `getMilotoDraws(page, size, gameDate?)` and `getMilotoDrawDates()`, both hitting the backend's `/miloto/draws` and `/miloto/draws/dates` endpoints.
+  - **`src/types/`** — shared TypeScript interfaces: `PaginatedResponse<T>` (matching the backend's pagination envelope), `MilotoDrawListItem` (game_id, game_date, numbers, accumulated, jackpot), `NavItem` (sidebar link shape).
+  - **`src/stores/theme.ts`** — Pinia store managing light/dark theme toggle; persists to `localStorage`, defaults to system preference, applies via `document.documentElement.classList.toggle('dark', ...)`.
+  - **`src/views/`** — page-level components:
+    - `HomeView.vue` — placeholder landing page.
+    - `MilotoView.vue` — full Miloto draws list with date picker search, pagination, number balls, jackpot badge, and link to detail view. Reads `page`/`date` from query params.
+    - `MilotoDrawDetailView.vue` — placeholder detail page for a single Miloto draw (shows draw id, "coming soon").
+    - `BalotoRevanchaView.vue` — placeholder page for Baloto/Revancha results ("coming soon").
+  - **`src/components/layout/`** — shell components: `AppSidebar` (desktop-only fixed sidebar with nav links), `AppTopbar` (sticky top bar with hamburger, breadcrumb, theme toggle), `AppBreadcrumb` (route-meta-driven breadcrumb trail), `navItems` (the two nav links: Miloto, Baloto/Revancha).
+  - **`src/components/ui/`** — reusable UI primitives: `NumberBall` (circular ball displaying a number), `AppPagination` (first/prev/next/last buttons with range label), `AppDatePicker` (custom calendar dropdown with allowed-dates constraint), `AppIcon` (inline SVG icons: dice, ticket, home, sun, moon, chevron-right).
+  - **`vite.config.ts`** — Vite config with `@vitejs/plugin-vue`, `@tailwindcss/vite`, `@` alias to `./src`, and dev-server proxy that rewrites `/api/*` to `http://localhost:8000/*`.
+  - **`src/style.css`** — Tailwind v4 import, custom `dark` variant (`&:where(.dark, .dark *)`), custom `brand-*` color palette via `@theme`, Inter font stack.
+  - **Status**: Miloto list view is functional (calls the backend, paginates, searches by date). Miloto detail view, Baloto/Revancha view, and the home page are placeholders. No admin/write UI exists yet.
