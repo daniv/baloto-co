@@ -39,6 +39,12 @@ const jackpotFromQuery = computed((): boolean | null => {
 
 const activeTab = computed<'todos' | 'cayeron'>(() => (jackpotFromQuery.value === true ? 'cayeron' : 'todos'))
 
+const visibleSizeOptions = computed(() => {
+  const total = result.value?.total ?? 0
+  const options = sizeOptions.filter((opt) => opt <= total || opt === sizeFromQuery.value)
+  return options.length > 0 ? options : [sizeOptions[0]]
+})
+
 function activateTab(tab: 'todos' | 'cayeron') {
   const query: Record<string, string> = { page: '1' }
   if (tab === 'todos' && dateFromQuery.value) query.date = dateFromQuery.value
@@ -232,7 +238,7 @@ onMounted(async () => {
         :pages="result.pages"
         :total="result.total"
         :size="result.size"
-        :page-size-options="activeTab === 'cayeron' ? sizeOptions : undefined"
+        :page-size-options="activeTab === 'cayeron' ? visibleSizeOptions : undefined"
         @first="goToPage(1)"
         @previous="goToPage(pageFromQuery - 1)"
         @next="goToPage(pageFromQuery + 1)"
