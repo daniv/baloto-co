@@ -16,9 +16,15 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const allowedDates = ref<string[]>([])
 
+const sizeOptions = [5, 10, 20, 30, 50]
+
 const pageFromQuery = computed(() => {
   const parsed = Number(route.query.page)
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1
+})
+const sizeFromQuery = computed(() => {
+  const parsed = Number(route.query.size)
+  return sizeOptions.includes(parsed) ? parsed : 10
 })
 const dateFromQuery = computed(() => (typeof route.query.date === 'string' ? route.query.date : null))
 
@@ -33,6 +39,12 @@ const jackpotFromQuery = computed((): boolean | null => {
 
 const activeTab = computed<'todos' | 'cayeron'>(() => (jackpotFromQuery.value === true ? 'cayeron' : 'todos'))
 
+const visibleSizeOptions = computed(() => {
+  const total = result.value?.total ?? 0
+  const options = sizeOptions.filter((opt) => opt <= total || opt === sizeFromQuery.value)
+  return options.length > 0 ? options : [sizeOptions[0]]
+})
+
 function activateTab(tab: 'todos' | 'cayeron') {
   const query: Record<string, string> = { page: '1' }
   if (tab === 'todos' && dateFromQuery.value) query.date = dateFromQuery.value
@@ -44,7 +56,12 @@ async function fetchDraws() {
   loading.value = true
   error.value = null
   try {
-    result.value = await getMilotoDraws(pageFromQuery.value, 10, dateFromQuery.value, jackpotFromQuery.value)
+    result.value = await getMilotoDraws(
+      pageFromQuery.value,
+      sizeFromQuery.value,
+      dateFromQuery.value,
+      jackpotFromQuery.value,
+    )
   } catch {
     error.value = 'No se pudieron cargar los resultados de Miloto. Intenta de nuevo.'
   } finally {
@@ -53,7 +70,14 @@ async function fetchDraws() {
 }
 
 function goToPage(page: number) {
-  const query: Record<string, string> = { page: String(page) }
+  const query: Record<string, string> = { page: String(page), size: String(sizeFromQuery.value) }
+  if (dateFromQuery.value) query.date = dateFromQuery.value
+  if (jackpotFromQuery.value != null) query.jackpot = String(jackpotFromQuery.value)
+  router.push({ query })
+}
+
+function changeSize(size: number) {
+  const query: Record<string, string> = { page: '1', size: String(size) }
   if (dateFromQuery.value) query.date = dateFromQuery.value
   if (jackpotFromQuery.value != null) query.jackpot = String(jackpotFromQuery.value)
   router.push({ query })
@@ -71,7 +95,7 @@ function clearSearch() {
   router.push({ query: {} })
 }
 
-watch([pageFromQuery, dateFromQuery, jackpotFromQuery], fetchDraws, { immediate: true })
+watch([pageFromQuery, sizeFromQuery, dateFromQuery, jackpotFromQuery], fetchDraws, { immediate: true })
 
 onMounted(async () => {
   try {
@@ -140,7 +164,9 @@ onMounted(async () => {
     <div class="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm">
-          <thead class="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400">
+          <thead
+            class="border-b border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400"
+          >
             <tr>
               <th scope="col" class="px-4 py-3 font-medium">Sorteo</th>
               <th scope="col" class="px-4 py-3 font-medium">Fecha</th>
@@ -163,11 +189,7 @@ onMounted(async () => {
               </td>
             </tr>
             <template v-else>
-              <tr
-                v-for="draw in result.items"
-                :key="draw.game_id"
-                class="hover:bg-slate-50 dark:hover:bg-slate-800/40"
-              >
+              <tr v-for="draw in result.items" :key="draw.game_id" class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                 <td class="px-4 py-3 font-medium tabular-nums text-slate-900 dark:text-white">
                   {{ draw.game_id }}
                 </td>
@@ -216,10 +238,12 @@ onMounted(async () => {
         :pages="result.pages"
         :total="result.total"
         :size="result.size"
+        :page-size-options="activeTab === 'cayeron' ? visibleSizeOptions : undefined"
         @first="goToPage(1)"
         @previous="goToPage(pageFromQuery - 1)"
         @next="goToPage(pageFromQuery + 1)"
         @last="goToPage(result.pages)"
+        @update:size="changeSize"
       />
     </div>
   </div>
